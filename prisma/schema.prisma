@@ -6,6 +6,69 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── Enums ───────────────────────────────────────────
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum TrainingType {
+  ONLINE
+  OFFLINE
+  EXTERNAL
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum StepType {
+  VIDEO
+  QUIZ
+  PRETEST
+  POSTTEST
+  DOCUMENT
+}
+
+enum AssignmentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum RegistrationStatus {
+  REGISTERED
+  ATTENDED
+  NO_SHOW
+}
+
+enum ResultStatus {
+  PASSED
+  FAILED
+  IN_PROGRESS
+}
+
+enum ResultSource {
+  ONLINE
+  OFFLINE
+  EXTERNAL
+}
+
+enum CertificateStatus {
+  VALID
+  REVOKED
+}
+
+// ─── Models ──────────────────────────────────────────
+
 model Admin {
   id            String    @id @default(cuid())
   username      String    @unique
@@ -15,122 +78,202 @@ model Admin {
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
 
+  assignments_created CourseAssignment[] @relation("AssignedByAdmin")
+
   @@map("admins")
 }
 
-model Driver {
-  id                String           @id @default(cuid())
-  full_name         String
-  national_id       String           @unique
-  date_of_birth     DateTime
-  phone             String?
-  status            DriverStatus     @default(ACTIVE)
-  onboarding_status OnboardingStatus @default(NOT_STARTED)
-  created_at        DateTime         @default(now())
-  updated_at        DateTime         @updatedAt
-  certificates      Certificate[]
-  quiz_attempts     QuizAttempt[]
-  video_progress    VideoProgress[]
+model Employee {
+  id            String         @id @default(cuid())
+  employee_code String         @unique // e.g. "E00001"
+  password_hash String
+  full_name     String
+  position      String         @default("")
+  department    String         @default("")
+  branch        String         @default("")
+  date_of_birth DateTime
+  start_date    DateTime       @default(now())
+  status        EmployeeStatus @default(ACTIVE)
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @updatedAt
 
-  @@map("drivers")
+  assignments    CourseAssignment[]
+  results        TrainingResult[]
+  quiz_attempts  QuizAttempt[]
+  step_progress  StepProgress[]
+  registrations  OfflineRegistration[]
+  certificates   Certificate[]
+
+  @@map("employees")
 }
 
-model Video {
-  id                        String          @id @default(cuid())
-  title                     String
-  url                       String
-  required_watch_percentage Int             @default(95)
-  is_active                 Boolean         @default(true)
-  created_at                DateTime        @default(now())
-  updated_at                DateTime        @updatedAt
-  video_progress            VideoProgress[]
+model Course {
+  id            String       @id @default(cuid())
+  code          String       @unique // e.g. "CRS-001"
+  title         String
+  description   String       @default("")
+  training_type TrainingType
+  pass_score    Int          @default(80)
+  is_mandatory  Boolean      @default(false)
+  thumbnail_url String?
+  status        CourseStatus @default(DRAFT)
+  created_at    DateTime     @default(now())
+  updated_at    DateTime     @updatedAt
 
-  @@map("videos")
+  steps        CourseStep[]
+  sessions     OfflineSession[]
+  assignments  CourseAssignment[]
+  results      TrainingResult[]
+  certificates Certificate[]
+
+  @@map("courses")
 }
 
-model VideoProgress {
-  id               String   @id @default(cuid())
-  driver_id        String
-  video_id         String
-  max_watched_time Float    @default(0)
-  total_duration   Float    @default(0)
-  completed        Boolean  @default(false)
-  last_position    Float    @default(0)
-  updated_at       DateTime @updatedAt
-  driver           Driver   @relation(fields: [driver_id], references: [id], onDelete: Cascade)
-  video            Video    @relation(fields: [video_id], references: [id], onDelete: Cascade)
+model CourseStep {
+  id                String   @id @default(cuid())
+  course_id         String
+  step_type         StepType
+  title             String
+  content_url       String?  // video/document URL on R2
+  order_index       Int      @default(0)
+  is_required       Boolean  @default(true)
+  min_watch_percent Int      @default(95) // for VIDEO type
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
 
-  @@unique([driver_id, video_id])
-  @@map("video_progress")
+  course    Course         @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  questions Question[]
+  progress  StepProgress[]
+  attempts  QuizAttempt[]
+
+  @@map("course_steps")
 }
 
 model Question {
   id             String   @id @default(cuid())
+  step_id        String
   question_text  String
-  options        Json
-  correct_answer Int
-  is_active      Boolean  @default(true)
+  options        Json     // ["option A", "option B", ...]
+  correct_answer Int      // index of correct option
   order_num      Int      @default(0)
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 
+  step CourseStep @relation(fields: [step_id], references: [id], onDelete: Cascade)
+
   @@map("questions")
 }
 
-model QuizConfig {
+model StepProgress {
   id            String   @id @default(cuid())
-  pass_score    Int      @default(80)
-  max_attempts  Int      @default(3)
-  num_questions Int      @default(10)
+  employee_id   String
+  step_id       String
+  completed     Boolean  @default(false)
+  watch_percent Float    @default(0) // for VIDEO type
+  last_position Float    @default(0) // last video position in seconds
   updated_at    DateTime @updatedAt
 
-  @@map("quiz_config")
+  employee Employee   @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+  step     CourseStep @relation(fields: [step_id], references: [id], onDelete: Cascade)
+
+  @@unique([employee_id, step_id])
+  @@map("step_progress")
 }
 
 model QuizAttempt {
-  id         String   @id @default(cuid())
-  driver_id  String
-  score      Float
-  passed     Boolean
-  attempt_no Int
-  answers    Json
-  created_at DateTime @default(now())
-  driver     Driver   @relation(fields: [driver_id], references: [id], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  employee_id String
+  step_id     String
+  score       Float
+  passed      Boolean
+  attempt_no  Int
+  answers     Json     // submitted answers
+  created_at  DateTime @default(now())
+
+  employee Employee   @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+  step     CourseStep @relation(fields: [step_id], references: [id], onDelete: Cascade)
 
   @@map("quiz_attempts")
 }
 
+model CourseAssignment {
+  id           String           @id @default(cuid())
+  employee_id  String
+  course_id    String
+  assigned_by  String?          // Admin ID
+  assigned_at  DateTime         @default(now())
+  due_date     DateTime?
+  status       AssignmentStatus @default(NOT_STARTED)
+
+  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+  course   Course   @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  admin    Admin?   @relation("AssignedByAdmin", fields: [assigned_by], references: [id])
+
+  @@unique([employee_id, course_id])
+  @@map("course_assignments")
+}
+
+model OfflineSession {
+  id           String   @id @default(cuid())
+  course_id    String
+  session_date DateTime
+  location     String   @default("")
+  capacity     Int      @default(30)
+  trainer_name String   @default("")
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  course        Course                @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  registrations OfflineRegistration[]
+
+  @@map("offline_sessions")
+}
+
+model OfflineRegistration {
+  id            String             @id @default(cuid())
+  employee_id   String
+  session_id    String
+  status        RegistrationStatus @default(REGISTERED)
+  registered_at DateTime           @default(now())
+
+  employee Employee       @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+  session  OfflineSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@unique([employee_id, session_id])
+  @@map("offline_registrations")
+}
+
+model TrainingResult {
+  id           String       @id @default(cuid())
+  employee_id  String
+  course_id    String
+  status       ResultStatus @default(IN_PROGRESS)
+  score        Float?
+  source       ResultSource
+  completed_at DateTime?
+  created_at   DateTime     @default(now())
+
+  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+  course   Course   @relation(fields: [course_id], references: [id], onDelete: Cascade)
+
+  @@unique([employee_id, course_id, source])
+  @@map("training_results")
+}
+
 model Certificate {
   id             String            @id @default(cuid())
-  certificate_no String            @unique
-  driver_id      String
+  certificate_no String            @unique // e.g. "MKPI-2026-00001"
+  employee_id    String
+  course_id      String
   score          Float
   issued_at      DateTime          @default(now())
   status         CertificateStatus @default(VALID)
+  pdf_url        String?
   revoked_at     DateTime?
   revoked_reason String?
-  driver         Driver            @relation(fields: [driver_id], references: [id], onDelete: Cascade)
+
+  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+  course   Course   @relation(fields: [course_id], references: [id], onDelete: Cascade)
 
   @@map("certificates")
-}
-
-enum DriverStatus {
-  ACTIVE
-  INACTIVE
-}
-
-enum OnboardingStatus {
-  NOT_STARTED
-  WATCHING
-  PASSED
-}
-
-enum CertificateStatus {
-  VALID
-  REVOKED
-}
-
-enum AdminRole {
-  SUPER_ADMIN
-  ADMIN
 }

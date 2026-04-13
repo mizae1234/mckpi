@@ -6,34 +6,33 @@ import bcrypt from 'bcryptjs'
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
-      id: 'driver-login',
-      name: 'Driver Login',
+      id: 'employee-login',
+      name: 'Employee Login',
       credentials: {
-        national_id: { label: 'National ID', type: 'text' },
-        date_of_birth: { label: 'Date of Birth', type: 'text' },
+        employee_code: { label: 'Employee Code', type: 'text' },
+        password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        const nationalId = credentials?.national_id as string
-        const dob = credentials?.date_of_birth as string
+        const employeeCode = credentials?.employee_code as string
+        const password = credentials?.password as string
 
-        if (!nationalId || !dob) return null
+        if (!employeeCode || !password) return null
 
-        const driver = await prisma.driver.findUnique({
-          where: { national_id: nationalId },
+        const employee = await prisma.employee.findUnique({
+          where: { employee_code: employeeCode.toUpperCase() },
         })
 
-        if (!driver) return null
-        if (driver.status === 'INACTIVE') return null
+        if (!employee) return null
+        if (employee.status === 'INACTIVE') return null
 
-        // Compare date of birth
-        const driverDob = driver.date_of_birth.toISOString().split('T')[0]
-        if (driverDob !== dob) return null
+        const isValid = await bcrypt.compare(password, employee.password_hash)
+        if (!isValid) return null
 
         return {
-          id: driver.id,
-          name: driver.full_name,
-          email: driver.national_id, // using email field to store national_id
-          role: 'driver',
+          id: employee.id,
+          name: employee.full_name,
+          email: employee.employee_code,
+          role: 'employee',
         }
       },
     }),
@@ -84,7 +83,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string
-        (session.user as { role: string }).role = token.role as string
+        ;(session.user as { role: string }).role = token.role as string
       }
       return session
     },

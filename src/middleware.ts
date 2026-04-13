@@ -10,9 +10,7 @@ export default async function middleware(request: NextRequest) {
     pathname === '/' ||
     pathname === '/login' ||
     pathname === '/admin/login' ||
-    pathname.startsWith('/verify') ||
     pathname.startsWith('/api/auth') ||
-    pathname.startsWith('/api/verify') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon')
   ) {
@@ -27,9 +25,9 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Driver routes (dashboard)
-  if (pathname.startsWith('/dashboard')) {
-    if (!session || (session.user as { role?: string })?.role !== 'driver') {
+  // Employee routes (learning)
+  if (pathname.startsWith('/learning')) {
+    if (!session || (session.user as { role?: string })?.role !== 'employee') {
       return NextResponse.redirect(new URL('/login', request.url))
     }
     return NextResponse.next()
@@ -43,7 +41,12 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  if (pathname.startsWith('/api/driver') || pathname.startsWith('/api/video') || pathname.startsWith('/api/quiz') || pathname.startsWith('/api/certificate')) {
+  if (
+    pathname.startsWith('/api/courses') ||
+    pathname.startsWith('/api/assignments') ||
+    pathname.startsWith('/api/results') ||
+    pathname.startsWith('/api/employee')
+  ) {
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

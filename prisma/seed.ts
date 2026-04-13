@@ -12,9 +12,9 @@ const adapter = new PrismaPg(pool)
 const prisma = new PrismaClient({ adapter })
 
 async function main() {
-  console.log('🌱 Seeding database...')
+  console.log('🌱 Seeding MKPI Database...')
 
-  // 1. Create default admin
+  // ─── 1. Admin ──────────────────────────────────────
   const adminPassword = await bcrypt.hash('admin123', 10)
   await prisma.admin.upsert({
     where: { username: 'admin' },
@@ -28,170 +28,215 @@ async function main() {
   })
   console.log('✅ Admin created (admin / admin123)')
 
-  // 2. Create default video
-  const video = await prisma.video.upsert({
-    where: { id: 'default-video' },
-    update: {},
-    create: {
-      id: 'default-video',
-      title: 'วิดีโออบรมการขับรถ EV7',
-      url: 'https://www.w3schools.com/html/mov_bbb.mp4',
-      required_watch_percentage: 95,
-      is_active: true,
-    },
-  })
-  console.log('✅ Default video created')
-
-  // 3. Create quiz config
-  await prisma.quizConfig.upsert({
-    where: { id: 'default-config' },
-    update: {},
-    create: {
-      id: 'default-config',
-      pass_score: 80,
-      max_attempts: 3,
-      num_questions: 10,
-    },
-  })
-  console.log('✅ Quiz config created')
-
-  // 4. Create sample questions
-  const questions = [
+  // ─── 2. Employees ─────────────────────────────────
+  const employees = [
     {
-      question_text: 'ก่อนออกรถควรตรวจสอบอะไรเป็นอันดับแรก?',
-      options: JSON.stringify(['ระบบแอร์', 'ระบบเบรกและยาง', 'วิทยุ', 'กระจกมองหลัง']),
-      correct_answer: 1,
-      order_num: 1,
+      employee_code: 'E00001',
+      full_name: 'สมชาย ใจดี',
+      position: 'พนักงาน',
+      department: 'ฝ่ายปฏิบัติการ',
+      branch: 'สำนักงานใหญ่',
+      date_of_birth: new Date('2000-01-01'),
+      start_date: new Date('2024-01-15'),
     },
     {
-      question_text: 'เมื่อผู้โดยสารขึ้นรถ สิ่งแรกที่ควรทำคืออะไร?',
-      options: JSON.stringify(['เปิดวิทยุ', 'ทักทายและสอบถามจุดหมาย', 'ออกรถทันที', 'ล็อคประตู']),
-      correct_answer: 1,
-      order_num: 2,
+      employee_code: 'E00002',
+      full_name: 'สมหญิง รักเรียน',
+      position: 'เจ้าหน้าที่',
+      department: 'ฝ่ายขาย',
+      branch: 'สาขาเชียงใหม่',
+      date_of_birth: new Date('1995-06-15'),
+      start_date: new Date('2024-03-01'),
     },
     {
-      question_text: 'ความเร็วสูงสุดที่อนุญาตในเขตเมืองคือเท่าไร?',
-      options: JSON.stringify(['60 กม./ชม.', '80 กม./ชม.', '90 กม./ชม.', '100 กม./ชม.']),
-      correct_answer: 1,
-      order_num: 3,
+      employee_code: 'E00003',
+      full_name: 'วิชัย เก่งกาจ',
+      position: 'Programmer',
+      department: 'ฝ่าย IT',
+      branch: 'สำนักงานใหญ่',
+      date_of_birth: new Date('1988-11-22'),
+      start_date: new Date('2023-06-01'),
     },
     {
-      question_text: 'หากผู้โดยสารลืมของไว้ในรถ ควรทำอย่างไร?',
-      options: JSON.stringify(['เก็บไว้เอง', 'แจ้งศูนย์ทันที', 'ทิ้งไป', 'ส่งให้ตำรวจ']),
-      correct_answer: 1,
-      order_num: 4,
+      employee_code: 'E00004',
+      full_name: 'นภา สว่างศรี',
+      position: 'ผู้จัดการ',
+      department: 'ฝ่ายบุคคล',
+      branch: 'สำนักงานใหญ่',
+      date_of_birth: new Date('1992-03-10'),
+      start_date: new Date('2022-01-10'),
     },
     {
-      question_text: 'ข้อใดเป็นมารยาทที่ดีของคนขับแท็กซี่?',
-      options: JSON.stringify(['ใช้โทรศัพท์ขณะขับ', 'ปฏิเสธผู้โดยสาร', 'แต่งกายสุภาพ สะอาด', 'เปิดเพลงดังๆ']),
-      correct_answer: 2,
-      order_num: 5,
-    },
-    {
-      question_text: 'เมื่อฝนตกหนักควรปฏิบัติอย่างไร?',
-      options: JSON.stringify(['ขับเร็วเพื่อไปถึงเร็ว', 'ลดความเร็วและเปิดไฟ', 'จอดกลางถนน', 'ขับตามปกติ']),
-      correct_answer: 1,
-      order_num: 6,
-    },
-    {
-      question_text: 'ค่ามิเตอร์เริ่มต้นของแท็กซี่คือเท่าไร?',
-      options: JSON.stringify(['25 บาท', '35 บาท', '40 บาท', '50 บาท']),
-      correct_answer: 1,
-      order_num: 7,
-    },
-    {
-      question_text: 'หากเกิดอุบัติเหตุ สิ่งแรกที่ควรทำคืออะไร?',
-      options: JSON.stringify(['ขับหนี', 'ดูแลผู้บาดเจ็บและแจ้งเหตุ', 'ถ่ายรูปลง Social', 'โทรหาเพื่อน']),
-      correct_answer: 1,
-      order_num: 8,
-    },
-    {
-      question_text: 'EV7 กำหนดให้ตรวจสภาพรถทุกกี่เดือน?',
-      options: JSON.stringify(['ทุก 1 เดือน', 'ทุก 3 เดือน', 'ทุก 6 เดือน', 'ทุก 12 เดือน']),
-      correct_answer: 1,
-      order_num: 9,
-    },
-    {
-      question_text: 'ข้อใดผิดเกี่ยวกับการชาร์จรถ EV?',
-      options: JSON.stringify(['ชาร์จเมื่อแบตต่ำกว่า 20%', 'ใช้สายชาร์จที่กำหนด', 'ชาร์จในที่เปียกน้ำ', 'ถอดสายเมื่อชาร์จเต็ม']),
-      correct_answer: 2,
-      order_num: 10,
-    },
-    {
-      question_text: 'คนขับ EV7 ต้องพกเอกสารอะไรบ้าง?',
-      options: JSON.stringify(['บัตรประชาชนเท่านั้น', 'ใบขับขี่และบัตรประจำตัว EV7', 'หนังสือเดินทาง', 'ไม่ต้องพกอะไร']),
-      correct_answer: 1,
-      order_num: 11,
-    },
-    {
-      question_text: 'หากมิเตอร์เสีย ควรทำอย่างไร?',
-      options: JSON.stringify(['คิดราคาเอง', 'แจ้งศูนย์และหยุดรับผู้โดยสาร', 'ขับต่อไป', 'ต่อรองราคา']),
-      correct_answer: 1,
-      order_num: 12,
-    },
-    {
-      question_text: 'ระยะทางที่ควรเว้นจากรถคันหน้าคือเท่าไร?',
-      options: JSON.stringify(['1 เมตร', '2 วินาที', '5 เมตร', 'ชิดเท่าไรก็ได้']),
-      correct_answer: 1,
-      order_num: 13,
-    },
-    {
-      question_text: 'หากผู้โดยสารไม่ยอมจ่ายค่าโดยสาร ควรทำอย่างไร?',
-      options: JSON.stringify(['ทะเลาะ', 'จดทะเบียนรถแจ้งศูนย์', 'ปล่อยไป', 'ขู่ผู้โดยสาร']),
-      correct_answer: 1,
-      order_num: 14,
-    },
-    {
-      question_text: 'ข้อใดคือข้อดีของรถ EV เทียบกับรถน้ำมัน?',
-      options: JSON.stringify(['เสียงดัง', 'ไม่ปล่อยไอเสีย', 'ค่าซ่อมแพง', 'ชาร์จนาน']),
-      correct_answer: 1,
-      order_num: 15,
+      employee_code: 'E00005',
+      full_name: 'ประเสริฐ มั่นคง',
+      position: 'หัวหน้างาน',
+      department: 'ฝ่ายผลิต',
+      branch: 'สาขาระยอง',
+      date_of_birth: new Date('1985-12-25'),
+      start_date: new Date('2020-08-15'),
     },
   ]
 
-  for (const q of questions) {
-    await prisma.question.upsert({
-      where: { id: `q-${q.order_num}` },
-      update: { ...q },
-      create: { id: `q-${q.order_num}`, ...q },
-    })
-  }
-  console.log(`✅ ${questions.length} questions created`)
-
-  // 5. Create demo drivers
-  const drivers = [
-    { full_name: 'สมชาย ใจดี', national_id: '1100100100001', date_of_birth: new Date('1985-03-15'), phone: '0812345678' },
-    { full_name: 'สมหญิง รักเรียน', national_id: '1100100100002', date_of_birth: new Date('1990-07-22'), phone: '0823456789' },
-    { full_name: 'วิชัย เก่งกาจ', national_id: '1100100100003', date_of_birth: new Date('1988-11-30'), phone: '0834567890' },
-    { full_name: 'นภา สว่าง', national_id: '1100100100004', date_of_birth: new Date('1992-01-10'), phone: '0845678901' },
-    { full_name: 'ประเสริฐ มั่นคง', national_id: '1100100100005', date_of_birth: new Date('1980-06-05'), phone: '0856789012' },
-  ]
-
-  for (const d of drivers) {
-    await prisma.driver.upsert({
-      where: { national_id: d.national_id },
-      update: {},
-      create: d,
-    })
-  }
-  console.log(`✅ ${drivers.length} demo drivers created`)
-
-  // Display ALL demo driver login credentials (Buddhist Era format)
-  console.log('')
-  console.log('📋 === Demo Driver Login Credentials (ทั้งหมด) ===')
-  console.log('────────────────────────────────────────────────')
-  for (const d of drivers) {
-    const dob = d.date_of_birth
+  for (const emp of employees) {
+    // Default password = ddmmyyyy of date_of_birth
+    const dob = emp.date_of_birth
     const dd = String(dob.getDate()).padStart(2, '0')
     const mm = String(dob.getMonth() + 1).padStart(2, '0')
-    const buddhistYear = dob.getFullYear() + 543
-    console.log(`👤 ${d.full_name}`)
-    console.log(`   เลขบัตรประชาชน : ${d.national_id}`)
-    console.log(`   วันเกิด (พ.ศ.) : ${dd}/${mm}/${buddhistYear}`)
+    const yyyy = String(dob.getFullYear())
+    const defaultPassword = `${dd}${mm}${yyyy}`
+    const passwordHash = await bcrypt.hash(defaultPassword, 10)
+
+    await prisma.employee.upsert({
+      where: { employee_code: emp.employee_code },
+      update: {},
+      create: {
+        ...emp,
+        password_hash: passwordHash,
+      },
+    })
+  }
+  console.log(`✅ ${employees.length} employees created`)
+
+  // ─── 3. Courses ────────────────────────────────────
+  const onlineCourse = await prisma.course.upsert({
+    where: { code: 'CRS-001' },
+    update: {},
+    create: {
+      code: 'CRS-001',
+      title: 'ความปลอดภัยในการทำงาน',
+      description: 'หลักสูตรอบรมเรื่องความปลอดภัยในสถานที่ทำงาน พร้อมวิดีโอและแบบทดสอบ',
+      training_type: 'ONLINE',
+      pass_score: 80,
+      is_mandatory: true,
+      status: 'PUBLISHED',
+    },
+  })
+
+  await prisma.course.upsert({
+    where: { code: 'CRS-002' },
+    update: {},
+    create: {
+      code: 'CRS-002',
+      title: 'พัฒนาทักษะการสื่อสาร',
+      description: 'อบรมเชิงปฏิบัติการเรื่องการสื่อสารในองค์กร',
+      training_type: 'OFFLINE',
+      pass_score: 70,
+      is_mandatory: false,
+      status: 'PUBLISHED',
+    },
+  })
+
+  await prisma.course.upsert({
+    where: { code: 'CRS-003' },
+    update: {},
+    create: {
+      code: 'CRS-003',
+      title: 'Compliance & Ethics (External)',
+      description: 'หลักสูตร Compliance จากระบบภายนอก นำเข้าผ่าน Excel',
+      training_type: 'EXTERNAL',
+      pass_score: 60,
+      is_mandatory: true,
+      status: 'PUBLISHED',
+    },
+  })
+  console.log('✅ 3 courses created (ONLINE, OFFLINE, EXTERNAL)')
+
+  // ─── 4. Course Steps (for ONLINE course) ──────────
+  const videoStep = await prisma.courseStep.upsert({
+    where: { id: 'step-video-1' },
+    update: {},
+    create: {
+      id: 'step-video-1',
+      course_id: onlineCourse.id,
+      step_type: 'VIDEO',
+      title: 'วิดีโอ: ความปลอดภัยเบื้องต้น',
+      content_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
+      order_index: 1,
+      is_required: true,
+      min_watch_percent: 95,
+    },
+  })
+
+  const quizStep = await prisma.courseStep.upsert({
+    where: { id: 'step-quiz-1' },
+    update: {},
+    create: {
+      id: 'step-quiz-1',
+      course_id: onlineCourse.id,
+      step_type: 'QUIZ',
+      title: 'แบบทดสอบ: ความปลอดภัย',
+      order_index: 2,
+      is_required: true,
+    },
+  })
+  console.log('✅ 2 course steps created (VIDEO + QUIZ)')
+
+  // ─── 5. Questions for Quiz Step ───────────────────
+  const questions = [
+    { question_text: 'อุปกรณ์ PPE ย่อมาจากอะไร?', options: ['Personal Protective Equipment', 'Private Protection Essentials', 'Public Protection Equipment', 'Primary Protection Element'], correct_answer: 0 },
+    { question_text: 'เมื่อเกิดเหตุเพลิงไหม้ สิ่งแรกที่ต้องทำคืออะไร?', options: ['วิ่งหนี', 'กดสัญญาณแจ้งเหตุ', 'ดับเพลิงเอง', 'โทรแจ้งเพื่อน'], correct_answer: 1 },
+    { question_text: 'สีแดงบนป้ายความปลอดภัยหมายถึงอะไร?', options: ['ข้อมูลทั่วไป', 'คำเตือน', 'ห้ามกระทำ / อันตราย', 'ปลอดภัย'], correct_answer: 2 },
+    { question_text: 'ถังดับเพลิงชนิด CO2 เหมาะกับไฟประเภทใด?', options: ['ไม้ กระดาษ', 'น้ำมัน ไขมัน', 'อุปกรณ์ไฟฟ้า', 'โลหะ'], correct_answer: 2 },
+    { question_text: 'ข้อใดคือหลัก 5ส ในที่ทำงาน?', options: ['สะสาง สะดวก สะอาด สุขลักษณะ สร้างนิสัย', 'สวย สะอาด สดใส สุข สำเร็จ', 'เสียง สี สัมผัส สุข สงบ', 'สร้าง ส่ง เสริม สอน สั่ง'], correct_answer: 0 },
+    { question_text: 'เครื่องหมาย ☣️ หมายถึงอะไร?', options: ['สารเคมี', 'กัมมันตรังสี', 'อันตรายทางชีวภาพ', 'ไฟฟ้าแรงสูง'], correct_answer: 2 },
+    { question_text: 'ข้อใดเป็นการปฏิบัติที่ถูกต้องเมื่อยกของหนัก?', options: ['ก้มหลังยก', 'ย่อเข่าแล้วยก', 'บิดตัวยก', 'ยกด้วยมือข้างเดียว'], correct_answer: 1 },
+    { question_text: 'ทางหนีไฟควรตรวจสอบทุกกี่เดือน?', options: ['1 เดือน', '3 เดือน', '6 เดือน', '12 เดือน'], correct_answer: 0 },
+    { question_text: 'หากพบสายไฟชำรุด ควรทำอย่างไร?', options: ['ใช้เทปพันไว้', 'แจ้งหัวหน้างานทันที', 'ถอดปลั๊กแล้วใช้ต่อ', 'ไม่ต้องทำอะไร'], correct_answer: 1 },
+    { question_text: 'การฝึกซ้อมอพยพหนีไฟควรจัดทุกปีอย่างน้อยกี่ครั้ง?', options: ['1 ครั้ง', '2 ครั้ง', '4 ครั้ง', 'ไม่จำเป็นต้องจัด'], correct_answer: 0 },
+  ]
+
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i]
+    await prisma.question.upsert({
+      where: { id: `q-${i + 1}` },
+      update: { ...q, options: JSON.stringify(q.options), order_num: i + 1 },
+      create: {
+        id: `q-${i + 1}`,
+        step_id: quizStep.id,
+        question_text: q.question_text,
+        options: JSON.stringify(q.options),
+        correct_answer: q.correct_answer,
+        order_num: i + 1,
+      },
+    })
+  }
+  console.log(`✅ ${questions.length} questions created for quiz step`)
+
+  // ─── 6. Offline Session ────────────────────────────
+  const offlineCourse = await prisma.course.findUnique({ where: { code: 'CRS-002' } })
+  if (offlineCourse) {
+    await prisma.offlineSession.upsert({
+      where: { id: 'session-1' },
+      update: {},
+      create: {
+        id: 'session-1',
+        course_id: offlineCourse.id,
+        session_date: new Date('2026-05-01T09:00:00'),
+        location: 'ห้องประชุม A ชั้น 3',
+        capacity: 30,
+        trainer_name: 'อ.สมศักดิ์ วิชาการ',
+      },
+    })
+    console.log('✅ 1 offline session created')
+  }
+
+  // ─── Print Credentials ─────────────────────────────
+  console.log('')
+  console.log('📋 === Login Credentials ===')
+  console.log('────────────────────────────────────────')
+  console.log('🔑 Admin: admin / admin123')
+  console.log('')
+  for (const emp of employees) {
+    const dob = emp.date_of_birth
+    const dd = String(dob.getDate()).padStart(2, '0')
+    const mm = String(dob.getMonth() + 1).padStart(2, '0')
+    const yyyy = String(dob.getFullYear())
+    console.log(`👤 ${emp.full_name}`)
+    console.log(`   รหัส: ${emp.employee_code} / รหัสผ่าน: ${dd}${mm}${yyyy}`)
+    console.log(`   แผนก: ${emp.department} | สาขา: ${emp.branch}`)
     console.log('')
   }
-  console.log('────────────────────────────────────────────────')
-
+  console.log('────────────────────────────────────────')
   console.log('🎉 Seeding complete!')
 }
 

@@ -1,15 +1,15 @@
 'use client'
 
-import { useState } from 'react'
 import { signIn } from 'next-auth/react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { Car, AlertCircle, Loader2, Lock } from 'lucide-react'
+import { GraduationCap, LogIn, Eye, EyeOff } from 'lucide-react'
 
 export default function AdminLoginPage() {
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -38,90 +38,77 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3">
-            <div className="w-14 h-14 rounded-2xl gradient-bg flex items-center justify-center">
-              <Car className="w-8 h-8 text-white" />
-            </div>
-            <div className="text-left">
-              <span className="text-3xl font-extrabold text-white">EV7</span>
-              <p className="text-gray-400 text-xs">Admin Panel</p>
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
+      {/* Decorative */}
+      <div className="absolute top-20 right-10 w-72 h-72 rounded-full bg-white/10 blur-sm" />
+      <div className="absolute bottom-10 left-10 w-96 h-96 rounded-full bg-white/5" />
 
-        {/* Login Card */}
-        <div className="bg-white rounded-3xl shadow-2xl p-8 animate-fade-in">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-              <Lock className="w-5 h-5 text-gray-600" />
+      <div className="w-full max-w-md relative z-10 animate-fade-in">
+        <div className="glass-card p-8">
+          {/* Logo */}
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 rounded-2xl gradient-bg flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <GraduationCap className="w-8 h-8 text-white" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">ผู้ดูแลระบบ</h2>
-              <p className="text-gray-500 text-xs">เข้าสู่ระบบจัดการ</p>
-            </div>
+            <h1 className="text-2xl font-bold text-[var(--color-text)]">MKPI Admin</h1>
+            <p className="text-sm text-[var(--color-text-secondary)] mt-1">เข้าสู่ระบบสำหรับผู้ดูแล</p>
           </div>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-red-700 text-sm">{error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                ชื่อผู้ใช้
-              </label>
+              <label className="block text-sm font-medium text-[var(--color-text)] mb-1">ชื่อผู้ใช้</label>
               <input
                 type="text"
-                placeholder="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="input-field"
+                placeholder="admin"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                รหัสผ่าน
-              </label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="input-field"
-                required
-              />
+              <label className="block text-sm font-medium text-[var(--color-text)] mb-1">รหัสผ่าน</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input-field pr-10"
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
+
+            {error && (
+              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg">
+                {error}
+              </div>
+            )}
 
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary w-full py-4 text-lg rounded-2xl"
+              className="btn-primary w-full py-3"
             >
               {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  กำลังตรวจสอบ...
-                </>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
-                'เข้าสู่ระบบ'
+                <>
+                  <LogIn className="w-5 h-5" />
+                  เข้าสู่ระบบ
+                </>
               )}
             </button>
           </form>
-        </div>
-
-        <div className="text-center mt-6">
-          <Link href="/" className="text-gray-500 hover:text-gray-300 text-sm transition-colors">
-            ← กลับหน้าแรก
-          </Link>
         </div>
       </div>
     </div>

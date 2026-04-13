@@ -1,139 +1,66 @@
-'use client'
+import { prisma } from '@/lib/prisma'
+import { Award } from 'lucide-react'
 
-import { useState, useEffect } from 'react'
-import { Award, Search, XCircle, AlertCircle } from 'lucide-react'
-import { formatDate, maskNationalId } from '@/lib/utils'
+export const dynamic = 'force-dynamic'
 
-interface Certificate {
-  id: string
-  certificate_no: string
-  score: number
-  issued_at: string
-  status: string
-  revoked_at: string | null
-  revoked_reason: string | null
-  driver: {
-    full_name: string
-    national_id: string
-  }
-}
-
-export default function CertificatesPage() {
-  const [certs, setCerts] = useState<Certificate[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [revoking, setRevoking] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetchCerts()
-  }, [])
-
-  const fetchCerts = async () => {
-    try {
-      const res = await fetch('/api/admin/certificates')
-      const data = await res.json()
-      setCerts(data.certificates || [])
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleRevoke = async (id: string) => {
-    if (!confirm('ต้องการเพิกถอน Certificate นี้?')) return
-    setRevoking(id)
-    try {
-      await fetch('/api/admin/certificates', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, action: 'revoke' }),
-      })
-      fetchCerts()
-    } finally {
-      setRevoking(null)
-    }
-  }
-
-  const filtered = certs.filter(c =>
-    c.certificate_no.toLowerCase().includes(search.toLowerCase()) ||
-    c.driver.full_name.toLowerCase().includes(search.toLowerCase())
-  )
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <div className="animate-spin w-8 h-8 border-4 border-ev7-500 border-t-transparent rounded-full" />
-      </div>
-    )
-  }
+export default async function CertificatesPage() {
+  const certificates = await prisma.certificate.findMany({
+    include: {
+      employee: { select: { employee_code: true, full_name: true } },
+      course: { select: { code: true, title: true } },
+    },
+    orderBy: { issued_at: 'desc' },
+  })
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">จัดการ Certificate</h1>
-        <p className="text-gray-500 text-sm">ใบรับรองทั้งหมด {certs.length} ใบ</p>
+        <h1 className="text-2xl font-bold text-[var(--color-text)]">ใบรับรอง</h1>
+        <p className="text-sm text-[var(--color-text-secondary)]">รายการ Certificate ทั้งหมด</p>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-        <input
-          type="text"
-          placeholder="ค้นหาเลข Certificate หรือชื่อ..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="input-field pl-10"
-        />
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="text-center py-12 stat-card">
-          <Award className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">ไม่พบ Certificate</p>
-        </div>
-      ) : (
-        <div className="table-container">
-          <table>
-            <thead>
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>เลขที่</th>
+              <th>พนักงาน</th>
+              <th>คอร์ส</th>
+              <th>คะแนน</th>
+              <th>วันที่ออก</th>
+              <th>สถานะ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {certificates.length === 0 ? (
               <tr>
-                <th>เลข Certificate</th>
-                <th>ชื่อ</th>
-                <th className="hidden sm:table-cell">คะแนน</th>
-                <th className="hidden md:table-cell">วันที่ออก</th>
-                <th>สถานะ</th>
-                <th></th>
+                <td colSpan={6} className="text-center py-12">
+                  <Award className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                  <p className="text-[var(--color-text-secondary)]">ยังไม่มีใบรับรอง</p>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {filtered.map((c) => (
-                <tr key={c.id}>
-                  <td className="font-mono text-sm font-semibold">{c.certificate_no}</td>
-                  <td>{c.driver.full_name}</td>
-                  <td className="hidden sm:table-cell">{Math.round(c.score)}%</td>
-                  <td className="hidden md:table-cell text-sm">{formatDate(c.issued_at)}</td>
+            ) : (
+              certificates.map((cert) => (
+                <tr key={cert.id}>
+                  <td className="font-mono font-semibold text-primary">{cert.certificate_no}</td>
                   <td>
-                    <span className={`badge ${c.status === 'VALID' ? 'badge-success' : 'badge-danger'}`}>
-                      {c.status === 'VALID' ? 'ใช้งานได้' : 'เพิกถอน'}
+                    <div className="font-medium">{cert.employee.full_name}</div>
+                    <div className="text-xs text-[var(--color-text-secondary)]">{cert.employee.employee_code}</div>
+                  </td>
+                  <td>{cert.course.title}</td>
+                  <td className="font-semibold">{cert.score}%</td>
+                  <td>{cert.issued_at.toLocaleDateString('th-TH')}</td>
+                  <td>
+                    <span className={`badge ${cert.status === 'VALID' ? 'badge-success' : 'badge-danger'}`}>
+                      {cert.status === 'VALID' ? 'ใช้งานได้' : 'ถูกเพิกถอน'}
                     </span>
                   </td>
-                  <td>
-                    {c.status === 'VALID' && (
-                      <button
-                        onClick={() => handleRevoke(c.id)}
-                        disabled={revoking === c.id}
-                        className="text-red-500 hover:text-red-700 transition-colors p-1"
-                        title="เพิกถอน"
-                      >
-                        <XCircle className="w-5 h-5" />
-                      </button>
-                    )}
-                  </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
