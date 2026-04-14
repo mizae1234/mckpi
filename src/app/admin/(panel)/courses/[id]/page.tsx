@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Plus, PlayCircle, ClipboardCheck, FileText, Edit } from 'lucide-react'
 import CourseStepsManager from './CourseStepsManager'
+import CourseDocumentsManager from './CourseDocumentsManager'
+import CourseStatusToggle from './CourseStatusToggle'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,8 +14,9 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
   const course = await prisma.course.findUnique({
     where: { id },
     include: {
-      steps: { orderBy: { order_index: 'asc' }, include: { _count: { select: { questions: true } } } },
-      sessions: { orderBy: { session_date: 'desc' }, include: { _count: { select: { registrations: true } } } },
+      steps: { orderBy: { orderIndex: 'asc' }, include: { _count: { select: { questions: true } } } },
+      documents: { orderBy: { createdAt: 'desc' } },
+      sessions: { orderBy: { sessionDate: 'desc' }, include: { _count: { select: { registrations: true } } } },
       _count: { select: { assignments: true, results: true } },
     },
   })
@@ -37,19 +40,24 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <span className="font-mono text-sm text-[var(--color-text-secondary)]">{course.code}</span>
-            <span className={`badge ${getTypeBadge(course.training_type)} text-[10px]`}>{course.training_type}</span>
+            <span className={`badge ${getTypeBadge(course.trainingType)} text-[10px]`}>
+              {course.trainingType === 'ONLINE' ? 'ออนไลน์ (วิดีโอ + ข้อสอบ)' : 
+               course.trainingType === 'OFFLINE' ? 'ออฟไลน์ (อบรมรอบ)' : 
+               'ภายนอก (แนบเอกสาร)'}
+            </span>
             <span className={`badge ${course.status === 'PUBLISHED' ? 'badge-success' : 'badge-warning'} text-[10px]`}>{course.status}</span>
-            {course.is_mandatory && <span className="badge badge-danger text-[10px]">บังคับ</span>}
+            {course.isMandatory && <span className="badge badge-danger text-[10px]">บังคับ</span>}
           </div>
           <h1 className="text-2xl font-bold text-[var(--color-text)]">{course.title}</h1>
           <p className="text-sm text-[var(--color-text-secondary)] mt-1">{course.description || 'ไม่มีคำอธิบาย'}</p>
         </div>
+        <CourseStatusToggle courseId={course.id} currentStatus={course.status} />
       </div>
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="stat-card text-center">
-          <div className="text-2xl font-bold text-[var(--color-text)]">{course.pass_score}%</div>
+          <div className="text-2xl font-bold text-[var(--color-text)]">{course.passScore}%</div>
           <div className="text-xs text-[var(--color-text-secondary)]">คะแนนผ่าน</div>
         </div>
         <div className="stat-card text-center">
@@ -67,7 +75,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
       </div>
 
       {/* Course Steps (ONLINE only) */}
-      {course.training_type === 'ONLINE' && (
+      {course.trainingType === 'ONLINE' && (
         <div className="stat-card p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-[var(--color-text)]">โครงสร้างบทเรียน</h2>
@@ -75,19 +83,20 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
 
           <CourseStepsManager courseId={course.id} initialSteps={course.steps.map(s => ({
             id: s.id,
-            step_type: s.step_type,
+            stepType: s.stepType,
             title: s.title,
-            content_url: s.content_url,
-            order_index: s.order_index,
-            is_required: s.is_required,
-            min_watch_percent: s.min_watch_percent,
+            contentUrl: s.contentUrl,
+            contentFilename: s.contentFilename,
+            orderIndex: s.orderIndex,
+            isRequired: s.isRequired,
+            minWatchPercent: s.minWatchPercent,
             questionCount: s._count.questions,
           }))} />
         </div>
       )}
 
       {/* Offline Sessions */}
-      {course.training_type === 'OFFLINE' && (
+      {course.trainingType === 'OFFLINE' && (
         <div className="stat-card p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-[var(--color-text)]">รอบอบรม</h2>
@@ -101,10 +110,10 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
                 <div key={session.id} className="flex items-center gap-4 p-3 rounded-xl border border-[var(--color-border)] hover:bg-[var(--color-surface-alt)] transition-colors">
                   <div className="flex-1">
                     <div className="font-medium text-[var(--color-text)]">
-                      {session.session_date.toLocaleDateString('th-TH', { dateStyle: 'long' })}
+                      {session.sessionDate.toLocaleDateString('th-TH', { dateStyle: 'long' })}
                     </div>
                     <div className="text-sm text-[var(--color-text-secondary)]">
-                      📍 {session.location} • 👤 {session.trainer_name}
+                      📍 {session.location} • 👤 {session.trainerName}
                     </div>
                   </div>
                   <div className="text-sm">
@@ -117,6 +126,21 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
           )}
         </div>
       )}
+
+      {/* Course Documents (all types) */}
+      <div className="stat-card p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-[var(--color-text)]">เอกสารเพิ่มเติม</h2>
+        </div>
+        <CourseDocumentsManager courseId={course.id} initialDocs={course.documents.map(d => ({
+          id: d.id,
+          filename: d.filename,
+          fileUrl: d.fileUrl,
+          fileSize: d.fileSize,
+          fileType: d.fileType,
+          createdAt: d.createdAt.toISOString(),
+        }))} />
+      </div>
     </div>
   )
 }

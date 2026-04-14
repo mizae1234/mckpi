@@ -3,6 +3,7 @@
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { ModalProvider } from '@/components/ModalProvider'
 import {
   LayoutDashboard,
   Users,
@@ -17,6 +18,7 @@ import {
   X,
   GraduationCap,
   Building2,
+  Library,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -38,6 +40,7 @@ const menuGroups = [
     title: 'TRAINING',
     items: [
       { href: '/admin/courses', icon: BookOpen, label: 'จัดการคอร์ส' },
+      { href: '/admin/question-bank', icon: Library, label: 'คลังคำถาม' },
       { href: '/admin/assignments', icon: ClipboardList, label: 'มอบหมายงาน' },
       { href: '/admin/sessions', icon: CalendarCheck, label: 'รอบอบรม Offline' },
       { href: '/admin/results', icon: BarChart3, label: 'ผลลัพธ์ & Import' },
@@ -117,6 +120,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         )}
       </header>
 
+      <ModalProvider>
       <div className="flex">
         {/* Desktop Sidebar */}
         <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:min-h-screen bg-white border-r border-[var(--color-border)] p-6 sticky top-0">
@@ -187,6 +191,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </main>
       </div>
+      </ModalProvider>
     </div>
   )
 }

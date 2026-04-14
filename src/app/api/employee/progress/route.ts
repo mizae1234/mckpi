@@ -10,35 +10,35 @@ export const POST = authMiddleware(async (request: NextRequest) => {
 
     const employeeId = session.user.id
     const body = await request.json()
-    const { step_id, watch_percent, course_id } = body
+    const { stepId, watchPercent, courseId } = body
 
-    if (!step_id || watch_percent === undefined || !course_id) {
+    if (!stepId || watchPercent === undefined || !courseId) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 })
     }
 
-    const step = await prisma.courseStep.findUnique({ where: { id: step_id } })
+    const step = await prisma.courseStep.findUnique({ where: { id: stepId } })
     if (!step) return NextResponse.json({ error: 'Step not found' }, { status: 404 })
 
-    const isCompleted = watch_percent >= step.min_watch_percent
+    const isCompleted = watchPercent >= step.minWatchPercent
 
     // Update or create progress
     const progress = await prisma.stepProgress.upsert({
-      where: { employee_id_step_id: { employee_id: employeeId, step_id } },
+      where: { employeeId_stepId: { employeeId: employeeId, stepId } },
       update: {
-        watch_percent,
+        watchPercent,
         completed: isCompleted ? true : undefined, // only update to true, never revert
       },
       create: {
-        employee_id: employeeId,
-        step_id,
-        watch_percent,
+        employeeId: employeeId,
+        stepId,
+        watchPercent,
         completed: isCompleted,
       },
     })
 
     // If reached completion, trigger evaluation
     if (isCompleted) {
-      await evaluateCourseCompletion(employeeId, course_id)
+      await evaluateCourseCompletion(employeeId, courseId)
     }
 
     return NextResponse.json(progress)

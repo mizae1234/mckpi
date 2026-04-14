@@ -18,17 +18,17 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { full_name, position, department, branch, date_of_birth, start_date, status } = body
+    const { fullName, position, department, branchCode, dateOfBirth, startDate, status } = body
 
     const employee = await prisma.employee.update({
       where: { id },
       data: {
-        full_name: full_name || undefined,
-        position: position ?? undefined,
-        department: department ?? undefined,
-        branch: branch ?? undefined,
-        date_of_birth: date_of_birth ? new Date(date_of_birth) : undefined,
-        start_date: start_date ? new Date(start_date) : undefined,
+        fullName: fullName || undefined,
+        positionCode: position ?? undefined,
+        departmentCode: department ?? undefined,
+        branchCode: branchCode ?? undefined,
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+        startDate: startDate ? new Date(startDate) : undefined,
         status: status || undefined,
       },
     })

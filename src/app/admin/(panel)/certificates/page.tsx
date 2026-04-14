@@ -6,10 +6,10 @@ export const dynamic = 'force-dynamic'
 export default async function CertificatesPage() {
   const certificates = await prisma.certificate.findMany({
     include: {
-      employee: { select: { employee_code: true, full_name: true } },
+      employee: { select: { employeeCode: true, fullName: true } },
       course: { select: { code: true, title: true } },
     },
-    orderBy: { issued_at: 'desc' },
+    orderBy: { issuedAt: 'desc' },
   })
 
   return (
@@ -42,14 +42,14 @@ export default async function CertificatesPage() {
             ) : (
               certificates.map((cert) => (
                 <tr key={cert.id}>
-                  <td className="font-mono font-semibold text-primary">{cert.certificate_no}</td>
+                  <td className="font-mono font-semibold text-primary">{cert.certificateNo}</td>
                   <td>
-                    <div className="font-medium">{cert.employee.full_name}</div>
-                    <div className="text-xs text-[var(--color-text-secondary)]">{cert.employee.employee_code}</div>
+                    <div className="font-medium">{cert.employee.fullName}</div>
+                    <div className="text-xs text-[var(--color-text-secondary)]">{cert.employee.employeeCode}</div>
                   </td>
                   <td>{cert.course.title}</td>
                   <td className="font-semibold">{cert.score}%</td>
-                  <td>{cert.issued_at.toLocaleDateString('th-TH')}</td>
+                  <td>{cert.issuedAt.toLocaleDateString('th-TH')}</td>
                   <td>
                     <span className={`badge ${cert.status === 'VALID' ? 'badge-success' : 'badge-danger'}`}>
                       {cert.status === 'VALID' ? 'ใช้งานได้' : 'ถูกเพิกถอน'}

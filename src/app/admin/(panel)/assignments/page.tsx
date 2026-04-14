@@ -5,16 +5,16 @@ import { ClipboardList, Plus, Save, X } from 'lucide-react'
 
 interface Employee {
   id: string
-  employee_code: string
-  full_name: string
-  department: string
+  employeeCode: string
+  fullName: string
+  departmentCode: string
 }
 
 interface Course {
   id: string
   code: string
   title: string
-  training_type: string
+  trainingType: string
 }
 
 export default function AssignmentsPage() {
@@ -28,8 +28,8 @@ export default function AssignmentsPage() {
     employee: Employee
     course: Course
     status: string
-    due_date: string | null
-    assigned_at: string
+    dueDate: string | null
+    assignedAt: string
   }>>([])
 
   useEffect(() => {
@@ -54,9 +54,9 @@ export default function AssignmentsPage() {
 
     const formData = new FormData(e.currentTarget)
     const data = {
-      employee_id: formData.get('employee_id'),
-      course_id: formData.get('course_id'),
-      due_date: formData.get('due_date') || null,
+      employeeId: formData.get('employeeId'),
+      courseId: formData.get('courseId'),
+      dueDate: formData.get('dueDate') || null,
     }
 
     try {
@@ -140,8 +140,8 @@ export default function AssignmentsPage() {
               assignments.map((a) => (
                 <tr key={a.id}>
                   <td>
-                    <div className="font-medium">{a.employee?.full_name}</div>
-                    <div className="text-xs text-[var(--color-text-secondary)]">{a.employee?.employee_code}</div>
+                    <div className="font-medium">{a.employee?.fullName}</div>
+                    <div className="text-xs text-[var(--color-text-secondary)]">{a.employee?.employeeCode}</div>
                   </td>
                   <td>
                     <div className="font-medium">{a.course?.title}</div>
@@ -150,8 +150,8 @@ export default function AssignmentsPage() {
                   <td>
                     <span className={`badge ${getStatusBadge(a.status)}`}>{getStatusLabel(a.status)}</span>
                   </td>
-                  <td>{a.due_date ? new Date(a.due_date).toLocaleDateString('th-TH') : '-'}</td>
-                  <td>{new Date(a.assigned_at).toLocaleDateString('th-TH')}</td>
+                  <td>{a.dueDate ? new Date(a.dueDate).toLocaleDateString('th-TH') : '-'}</td>
+                  <td>{new Date(a.assignedAt).toLocaleDateString('th-TH')}</td>
                 </tr>
               ))
             )}
@@ -172,25 +172,25 @@ export default function AssignmentsPage() {
             <form onSubmit={handleAssign} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-[var(--color-text)] mb-1">พนักงาน *</label>
-                <select name="employee_id" className="input-field" required>
+                <select name="employeeId" className="input-field" required>
                   <option value="">-- เลือกพนักงาน --</option>
                   {employees.map(e => (
-                    <option key={e.id} value={e.id}>{e.employee_code} — {e.full_name}</option>
+                    <option key={e.id} value={e.id}>{e.employeeCode} — {e.fullName}</option>
                   ))}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-[var(--color-text)] mb-1">คอร์ส *</label>
-                <select name="course_id" className="input-field" required>
+                <select name="courseId" className="input-field" required>
                   <option value="">-- เลือกคอร์ส --</option>
                   {courses.map(c => (
-                    <option key={c.id} value={c.id}>[{c.training_type}] {c.title}</option>
+                    <option key={c.id} value={c.id}>[{c.trainingType}] {c.title}</option>
                   ))}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-[var(--color-text)] mb-1">กำหนดเสร็จ</label>
-                <input name="due_date" type="date" className="input-field" />
+                <input name="dueDate" type="date" className="input-field" />
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">ยกเลิก</button>

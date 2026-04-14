@@ -9,6 +9,15 @@ export default function CreateEmployeePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [branches, setBranches] = useState<{ code: string; name: string }[]>([])
+
+  // Fetch branches
+  useState(() => {
+    fetch('/api/admin/branches')
+      .then(res => res.json())
+      .then(data => Array.isArray(data) && setBranches(data))
+      .catch(err => console.error('Error fetching branches:', err))
+  })
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -17,13 +26,13 @@ export default function CreateEmployeePage() {
 
     const formData = new FormData(e.currentTarget)
     const data = {
-      employee_code: formData.get('employee_code'),
-      full_name: formData.get('full_name'),
-      position: formData.get('position'),
-      department: formData.get('department'),
-      branch: formData.get('branch'),
-      date_of_birth: formData.get('date_of_birth'),
-      start_date: formData.get('start_date'),
+      employeeCode: formData.get('employeeCode'),
+      fullName: formData.get('fullName'),
+      positionCode: formData.get('position'),
+      departmentCode: formData.get('department'),
+      branchCode: formData.get('branchCode'),
+      dateOfBirth: formData.get('dateOfBirth'),
+      startDate: formData.get('startDate'),
     }
 
     try {
@@ -64,11 +73,11 @@ export default function CreateEmployeePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1">รหัสพนักงาน *</label>
-            <input name="employee_code" className="input-field" placeholder="เช่น E00006" required />
+            <input name="employeeCode" className="input-field" placeholder="เช่น E00006" required />
           </div>
           <div>
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1">ชื่อ-นามสกุล *</label>
-            <input name="full_name" className="input-field" placeholder="เช่น สมชาย ใจดี" required />
+            <input name="fullName" className="input-field" placeholder="เช่น สมชาย ใจดี" required />
           </div>
           <div>
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1">ตำแหน่ง</label>
@@ -80,16 +89,21 @@ export default function CreateEmployeePage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1">สาขา</label>
-            <input name="branch" className="input-field" placeholder="เช่น สำนักงานใหญ่" />
+            <select name="branchCode" className="input-field">
+              <option value="">- ระบุสาขา -</option>
+              {branches.map(b => (
+                <option key={b.code} value={b.code}>{b.name} ({b.code})</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1">วันเกิด *</label>
-            <input name="date_of_birth" type="date" className="input-field" required />
+            <input name="dateOfBirth" type="date" className="input-field" required />
             <p className="text-xs text-[var(--color-text-secondary)] mt-1">ใช้เป็นรหัสผ่านเริ่มต้น (ddmmyyyy)</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1">วันเริ่มงาน</label>
-            <input name="start_date" type="date" className="input-field" defaultValue={new Date().toISOString().split('T')[0]} />
+            <input name="startDate" type="date" className="input-field" defaultValue={new Date().toISOString().split('T')[0]} />
           </div>
         </div>
 

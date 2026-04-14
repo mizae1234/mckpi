@@ -9,25 +9,25 @@ import { useRouter } from 'next/navigation'
 
 interface QuestionData {
   id: string
-  question_text: string
+  questionText: string
   options: string[]
 }
 
 interface StepData {
   id: string
-  step_type: string
+  stepType: string
   title: string
-  content_url: string | null
-  min_watch_percent: number
+  contentUrl: string | null
+  minWatchPercent: number
   is_completed: boolean
-  watch_percent: number
+  watchPercent: number
   is_unlocked: boolean
   is_skipped: boolean
   questions: QuestionData[]
 }
 
 interface CoursePlayerProps {
-  course: { id: string; title: string; pass_score: number }
+  course: { id: string; title: string; passScore: number }
   steps: StepData[]
 }
 
@@ -69,25 +69,25 @@ export default function CoursePlayer({ course, steps }: CoursePlayerProps) {
 
         <div className="flex-1 overflow-y-auto bg-black/5 relative">
           {activeStep ? (
-            activeStep.step_type === 'VIDEO' ? (
+            activeStep.stepType === 'VIDEO' ? (
               <VideoPlayerComponent 
                 courseId={course.id}
                 step={activeStep} 
                 onComplete={handleStepComplete} 
               />
-            ) : ['QUIZ', 'PRETEST', 'POSTTEST'].includes(activeStep.step_type) ? (
+            ) : ['QUIZ', 'PRETEST', 'POSTTEST'].includes(activeStep.stepType) ? (
               <QuizComponent 
                 courseId={course.id}
                 step={activeStep}
-                passScore={activeStep.step_type === 'PRETEST' ? 0 : course.pass_score} 
+                passScore={activeStep.stepType === 'PRETEST' ? 0 : course.passScore} 
                 onComplete={handleStepComplete} 
               />
             ) : (
               <div className="flex items-center justify-center h-full p-8 text-center flex-col gap-4 bg-white">
                 <FileText className="w-16 h-16 text-gray-300" />
                 <p className="text-[var(--color-text-secondary)]">เอกสารประกอบการเรียน</p>
-                {activeStep.content_url && (
-                  <a href={activeStep.content_url} target="_blank" rel="noreferrer" className="btn-primary">
+                {activeStep.contentUrl && (
+                  <a href={activeStep.contentUrl} target="_blank" rel="noreferrer" className="btn-primary">
                     เปิดเอกสาร
                   </a>
                 )}
@@ -123,14 +123,14 @@ export default function CoursePlayer({ course, steps }: CoursePlayerProps) {
                 }`}
               >
                 <div className="mt-0.5 shrink-0">
-                  {getStepIcon(step.step_type, step.is_completed, isLocked, step.is_skipped)}
+                  {getStepIcon(step.stepType, step.is_completed, isLocked, step.is_skipped)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className={`text-sm font-medium line-clamp-2 ${isCurrent ? 'text-primary' : 'text-gray-700'}`}>
                     {i + 1}. {step.title}
                   </div>
                   <div className="text-xs text-gray-500 mt-1 flex gap-2">
-                    {step.step_type === 'VIDEO' && `${step.watch_percent}%`}
+                    {step.stepType === 'VIDEO' && `${step.watchPercent}%`}
                     {step.is_skipped && <span className="text-purple-600 font-medium">ข้ามอัตโนมัติ</span>}
                   </div>
                 </div>

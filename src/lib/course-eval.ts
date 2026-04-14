@@ -1,12 +1,12 @@
 import { prisma } from './prisma'
 
 export async function evaluateCourseCompletion(employeeId: string, courseId: string) {
-  // 1. Fetch course steps ordered by order_index
+  // 1. Fetch course steps ordered by orderIndex
   const course = await prisma.course.findUnique({
     where: { id: courseId },
     include: {
       steps: {
-        orderBy: { order_index: 'asc' },
+        orderBy: { orderIndex: 'asc' },
       },
     },
   })
@@ -15,29 +15,29 @@ export async function evaluateCourseCompletion(employeeId: string, courseId: str
 
   // 2. Fetch employee's progress on these steps
   const progresses = await prisma.stepProgress.findMany({
-    where: { employee_id: employeeId, step_id: { in: course.steps.map(s => s.id) } },
+    where: { employeeId: employeeId, stepId: { in: course.steps.map(s => s.id) } },
   })
 
   // 3. Fetch employee's quiz attempts on these steps (specifically for PRETEST/PASSED check)
   const attempts = await prisma.quizAttempt.findMany({
-    where: { employee_id: employeeId, step_id: { in: course.steps.map(s => s.id) } },
-    orderBy: { created_at: 'desc' }, // newest first
+    where: { employeeId: employeeId, stepId: { in: course.steps.map(s => s.id) } },
+    orderBy: { createdAt: 'desc' }, // newest first
   })
 
-  // Group progress and attempts by step_id for quick access
-  const progressMap = new Map(progresses.map(p => [p.step_id, p]))
+  // Group progress and attempts by stepId for quick access
+  const progressMap = new Map(progresses.map(p => [p.stepId, p]))
   
   // For attempts, we only care if they passed
   const passedAttemptsMap = new Map()
   for (const attempt of attempts) {
-    if (attempt.passed && !passedAttemptsMap.has(attempt.step_id)) {
-      passedAttemptsMap.set(attempt.step_id, true)
+    if (attempt.passed && !passedAttemptsMap.has(attempt.stepId)) {
+      passedAttemptsMap.set(attempt.stepId, true)
     }
   }
 
   // 4. Implement Skip Logic Check
   // Determine if Pre-test was passed
-  const pretestStep = course.steps.find(s => s.step_type === 'PRETEST')
+  const pretestStep = course.steps.find(s => s.stepType === 'PRETEST')
   const isPretestPassed = pretestStep ? passedAttemptsMap.has(pretestStep.id) : false
 
   // 5. Evaluate overall completion
@@ -50,22 +50,22 @@ export async function evaluateCourseCompletion(employeeId: string, courseId: str
     // If Pre-test is passed, we ONLY require POSTTEST (and PRETEST itself) to be completed.
     
     // Calculate if this step is technically "Skipped"
-    const isVideoOrDoc = step.step_type === 'VIDEO' || step.step_type === 'DOCUMENT'
+    const isVideoOrDoc = step.stepType === 'VIDEO' || step.stepType === 'DOCUMENT'
     const isSkipped = isVideoOrDoc && isPretestPassed
 
-    if (step.is_required && !isSkipped) {
-      if (step.step_type === 'QUIZ' || step.step_type === 'POSTTEST') {
+    if (step.isRequired && !isSkipped) {
+      if (step.stepType === 'QUIZ' || step.stepType === 'POSTTEST') {
         if (!passedAttemptsMap.has(step.id)) {
           isCourseCompleted = false
           break
         }
         // Get the best score for final calculation
-        const bestAttempt = attempts.find(a => a.step_id === step.id && a.passed)
+        const bestAttempt = attempts.find(a => a.stepId === step.id && a.passed)
         if (bestAttempt) {
           overallScore += bestAttempt.score
           scoreCount++
         }
-      } else if (step.step_type === 'VIDEO' || step.step_type === 'DOCUMENT' || step.step_type === 'PRETEST') {
+      } else if (step.stepType === 'VIDEO' || step.stepType === 'DOCUMENT' || step.stepType === 'PRETEST') {
         const p = progressMap.get(step.id)
         if (!p || !p.completed) {
           isCourseCompleted = false
@@ -81,7 +81,7 @@ export async function evaluateCourseCompletion(employeeId: string, courseId: str
 
     // Update assignment
     const assignment = await prisma.courseAssignment.findFirst({
-      where: { employee_id: employeeId, course_id: courseId },
+      where: { employeeId: employeeId, courseId: courseId },
     })
 
     if (assignment && assignment.status !== 'COMPLETED') {
@@ -94,26 +94,26 @@ export async function evaluateCourseCompletion(employeeId: string, courseId: str
     // Upsert TrainingResult
     await prisma.trainingResult.upsert({
       where: {
-        employee_id_course_id_source: { employee_id: employeeId, course_id: courseId, source: course.training_type },
+        employeeId_courseId_source: { employeeId: employeeId, courseId: courseId, source: course.trainingType },
       },
       update: {
         status: 'PASSED',
         score: finalAvgScore,
-        completed_at: new Date(),
+        completedAt: new Date(),
       },
       create: {
-        employee_id: employeeId,
-        course_id: courseId,
-        source: course.training_type,
+        employeeId: employeeId,
+        courseId: courseId,
+        source: course.trainingType,
         status: 'PASSED',
         score: finalAvgScore,
-        completed_at: new Date(),
+        completedAt: new Date(),
       },
     })
 
     // Issue Certificate if not already issued
     const existingCert = await prisma.certificate.findFirst({
-      where: { employee_id: employeeId, course_id: courseId },
+      where: { employeeId: employeeId, courseId: courseId },
     })
 
     if (!existingCert) {
@@ -123,11 +123,11 @@ export async function evaluateCourseCompletion(employeeId: string, courseId: str
 
       await prisma.certificate.create({
         data: {
-          employee_id: employeeId,
-          course_id: courseId,
-          certificate_no: certNo,
+          employeeId: employeeId,
+          courseId: courseId,
+          certificateNo: certNo,
           score: finalAvgScore,
-          issued_at: new Date(),
+          issuedAt: new Date(),
         },
       })
     }

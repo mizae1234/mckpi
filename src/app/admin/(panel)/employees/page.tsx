@@ -8,36 +8,38 @@ export const dynamic = 'force-dynamic'
 export default async function EmployeesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; department?: string; branch?: string }>
+  searchParams: Promise<{ q?: string; departmentCode?: string; branchCode?: string }>
 }) {
   // ... (keep search logic unchanged)
   const params = await searchParams
   const q = params.q || ''
-  const department = params.department || ''
-  const branch = params.branch || ''
+  const departmentCode = params.departmentCode || ''
+  const branchCode = params.branchCode || ''
 
   const where: Record<string, unknown> = {}
   if (q) {
     where.OR = [
-      { employee_code: { contains: q, mode: 'insensitive' } },
-      { full_name: { contains: q, mode: 'insensitive' } },
+      { employeeCode: { contains: q, mode: 'insensitive' } },
+      { fullName: { contains: q, mode: 'insensitive' } },
     ]
   }
-  if (department) where.department = department
-  if (branch) where.branch = branch
+  if (departmentCode) where.departmentCode = departmentCode
+  if (branchCode) where.branchCode = branchCode
 
   const employees = await prisma.employee.findMany({
     where,
-    orderBy: { employee_code: 'asc' },
+    orderBy: { employeeCode: 'asc' },
+    include: { branch: true },
   })
 
   // Get unique departments and branches for filters
   const allEmployees = await prisma.employee.findMany({
-    select: { department: true, branch: true },
-    distinct: ['department', 'branch'],
+    select: { departmentCode: true },
+    distinct: ['departmentCode'],
   })
-  const departments = [...new Set(allEmployees.map(e => e.department).filter(Boolean))]
-  const branches = [...new Set(allEmployees.map(e => e.branch).filter(Boolean))]
+  const departments = [...new Set(allEmployees.map(e => e.departmentCode).filter((d): d is string => Boolean(d)))]
+  
+  const allBranches = await prisma.branch.findMany({ orderBy: { name: 'asc' } })
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -67,13 +69,13 @@ export default async function EmployeesPage({
               placeholder="ค้นหารหัส หรือชื่อพนักงาน..."
             />
           </div>
-          <select name="department" defaultValue={department} className="input-field py-2 text-sm w-auto min-w-[150px]">
+          <select name="departmentCode" defaultValue={departmentCode} className="input-field py-2 text-sm w-auto min-w-[150px]">
             <option value="">ทุกแผนก</option>
             {departments.map(d => <option key={d} value={d}>{d}</option>)}
           </select>
-          <select name="branch" defaultValue={branch} className="input-field py-2 text-sm w-auto min-w-[150px]">
+          <select name="branchCode" defaultValue={branchCode} className="input-field py-2 text-sm w-auto min-w-[150px]">
             <option value="">ทุกสาขา</option>
-            {branches.map(b => <option key={b} value={b}>{b}</option>)}
+            {allBranches.map(b => <option key={b.code} value={b.code}>{b.name} ({b.code})</option>)}
           </select>
           <button type="submit" className="btn-primary py-2 px-4 text-sm">
             <Search className="w-4 h-4" />
@@ -108,12 +110,12 @@ export default async function EmployeesPage({
             ) : (
               employees.map((emp) => (
                 <tr key={emp.id}>
-                  <td className="font-mono font-semibold text-primary">{emp.employee_code}</td>
-                  <td className="font-medium">{emp.full_name}</td>
-                  <td>{emp.position || '-'}</td>
-                  <td>{emp.department || '-'}</td>
-                  <td>{emp.branch || '-'}</td>
-                  <td>{emp.start_date.toLocaleDateString('th-TH')}</td>
+                  <td className="font-mono font-semibold text-primary">{emp.employeeCode}</td>
+                  <td className="font-medium">{emp.fullName}</td>
+                  <td>{emp.positionCode || '-'}</td>
+                  <td>{emp.departmentCode || '-'}</td>
+                  <td>{emp.branch?.name || '-'}</td>
+                  <td>{emp.startDate.toLocaleDateString('th-TH')}</td>
                   <td>
                     <span className={`badge ${emp.status === 'ACTIVE' ? 'badge-success' : 'badge-danger'}`}>
                       {emp.status === 'ACTIVE' ? 'ใช้งาน' : 'ปิดใช้งาน'}

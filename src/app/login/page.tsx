@@ -21,7 +21,7 @@ export default function EmployeeLoginPage() {
 
     try {
       const result = await signIn('employee-login', {
-        employee_code: employeeCode.toUpperCase(),
+        employeeCode: employeeCode.toUpperCase(),
         password,
         redirect: false,
       })

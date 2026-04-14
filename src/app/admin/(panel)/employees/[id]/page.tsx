@@ -20,19 +20,19 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
         </Link>
         <div>
           <h1 className="text-2xl font-bold text-[var(--color-text)]">แก้ไขพนักงาน</h1>
-          <p className="text-sm text-[var(--color-text-secondary)]">{employee.employee_code} — {employee.full_name}</p>
+          <p className="text-sm text-[var(--color-text-secondary)]">{employee.employeeCode} — {employee.fullName}</p>
         </div>
       </div>
 
       <EmployeeEditForm employee={{
         id: employee.id,
-        employee_code: employee.employee_code,
-        full_name: employee.full_name,
-        position: employee.position,
-        department: employee.department,
-        branch: employee.branch,
-        date_of_birth: employee.date_of_birth.toISOString().split('T')[0],
-        start_date: employee.start_date.toISOString().split('T')[0],
+        employeeCode: employee.employeeCode,
+        fullName: employee.fullName,
+        positionCode: employee.positionCode || '',
+        departmentCode: employee.departmentCode || '',
+        branchCode: employee.branchCode,
+        dateOfBirth: employee.dateOfBirth.toISOString().split('T')[0],
+        startDate: employee.startDate.toISOString().split('T')[0],
         status: employee.status,
       }} />
     </div>

@@ -20,9 +20,9 @@ export default function CreateCoursePage() {
       code: formData.get('code'),
       title: formData.get('title'),
       description: formData.get('description'),
-      training_type: formData.get('training_type'),
-      pass_score: Number(formData.get('pass_score')),
-      is_mandatory: formData.get('is_mandatory') === 'true',
+      trainingType: formData.get('trainingType'),
+      passScore: Number(formData.get('passScore')),
+      isMandatory: formData.get('isMandatory') === 'true',
       status: formData.get('status'),
     }
 
@@ -39,7 +39,8 @@ export default function CreateCoursePage() {
         return
       }
 
-      router.push('/admin/courses')
+      const createdCourse = await res.json()
+      router.push(`/admin/courses/${createdCourse.id}`)
       router.refresh()
     } catch {
       setError('เกิดข้อผิดพลาดในการบันทึก')
@@ -68,7 +69,7 @@ export default function CreateCoursePage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1">ประเภท *</label>
-            <select name="training_type" className="input-field" required>
+            <select name="trainingType" className="input-field" required>
               <option value="ONLINE">Online (วิดีโอ + ข้อสอบ)</option>
               <option value="OFFLINE">Offline (ห้องเรียน)</option>
               <option value="EXTERNAL">External (นำเข้าจากภายนอก)</option>
@@ -89,11 +90,11 @@ export default function CreateCoursePage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <div>
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1">คะแนนผ่าน (%)</label>
-            <input name="pass_score" type="number" className="input-field" defaultValue={80} min={0} max={100} />
+            <input name="passScore" type="number" className="input-field" defaultValue={80} min={0} max={100} />
           </div>
           <div>
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1">บังคับเรียน</label>
-            <select name="is_mandatory" className="input-field">
+            <select name="isMandatory" className="input-field">
               <option value="false">ไม่บังคับ</option>
               <option value="true">บังคับ</option>
             </select>

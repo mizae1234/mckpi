@@ -13,21 +13,21 @@ export async function GET() {
     }
 
     const assignments = await prisma.courseAssignment.findMany({
-      where: { employee_id: session.user.id },
+      where: { employeeId: session.user.id },
       include: {
         course: {
           select: {
             id: true,
             code: true,
             title: true,
-            training_type: true,
-            is_mandatory: true,
+            trainingType: true,
+            isMandatory: true,
           },
         },
       },
       orderBy: [
         { status: 'asc' },
-        { due_date: 'asc' },
+        { dueDate: 'asc' },
       ],
     })
 

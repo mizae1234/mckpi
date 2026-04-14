@@ -8,7 +8,7 @@ import { useState } from 'react'
 
 const navItems = [
   { href: '/learning', icon: LayoutDashboard, label: 'แดชบอร์ด' },
-  { href: '/learning/courses', icon: BookOpen, label: 'คอร์สของฉัน' },
+  { href: '/learning/courses', icon: BookOpen, label: 'รวมหลักสูตร' },
   { href: '/learning/offline', icon: CalendarCheck, label: 'อบรม Offline' },
   { href: '/learning/results', icon: BarChart3, label: 'ผลลัพธ์' },
   { href: '/learning/certificates', icon: Award, label: 'ใบรับรอง' },

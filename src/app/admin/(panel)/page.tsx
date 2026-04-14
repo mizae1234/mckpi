@@ -33,7 +33,7 @@ export default async function AdminDashboard() {
   const overdueCount = await prisma.courseAssignment.count({
     where: {
       status: { not: 'COMPLETED' },
-      due_date: { lt: new Date() },
+      dueDate: { lt: new Date() },
     },
   })
   const overdueRate = totalAssignments > 0 ? Math.round((overdueCount / totalAssignments) * 100) : 0

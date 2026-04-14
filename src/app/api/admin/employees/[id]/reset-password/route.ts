@@ -12,8 +12,8 @@ export async function POST(
     const employee = await prisma.employee.findUnique({ where: { id } })
     if (!employee) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    // Reset password to ddmmyyyy of date_of_birth
-    const dob = employee.date_of_birth
+    // Reset password to ddmmyyyy of dateOfBirth
+    const dob = employee.dateOfBirth
     const dd = String(dob.getDate()).padStart(2, '0')
     const mm = String(dob.getMonth() + 1).padStart(2, '0')
     const yyyy = String(dob.getFullYear())
@@ -22,7 +22,7 @@ export async function POST(
 
     await prisma.employee.update({
       where: { id },
-      data: { password_hash: passwordHash },
+      data: { passwordHash: passwordHash },
     })
 
     return NextResponse.json({ message: 'Password reset successfully' })

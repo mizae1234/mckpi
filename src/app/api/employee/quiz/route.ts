@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { authMiddleware } from '@/lib/auth-edge'
+import { auth } from '@/lib/auth'
 import { evaluateCourseCompletion } from '@/lib/course-eval'
 
-export const POST = authMiddleware(async (request: NextRequest) => {
+export async function POST(request: NextRequest) {
   try {
-    const session = await (request as any).auth()
-    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await auth()
+    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const employeeId = session.user.id
     const body = await request.json()
-    const { step_id, course_id, answers } = body // answers: Record<string, number> where key is question_id and value is selected option index
+    const { stepId, courseId, answers } = body // answers: Record<string, number> where key is question_id and value is selected option index
 
-    if (!step_id || !course_id || !answers) {
+    if (!stepId || !courseId || !answers) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 })
     }
 
     const step = await prisma.courseStep.findUnique({
-      where: { id: step_id },
+      where: { id: stepId },
       include: { questions: true, course: true },
     })
 
@@ -32,47 +32,47 @@ export const POST = authMiddleware(async (request: NextRequest) => {
     }
 
     for (const q of step.questions) {
-      if (answers[q.id] === q.correct_answer) {
+      if (answers[q.id] === q.correctAnswer) {
         correctCount++
       }
     }
 
     const score = Math.round((correctCount / totalQuestions) * 100)
     
-    // Check if passed (based on course pass_score, except pretest which is not strictly fail-blocking but determines skip)
-    // Actually schema says pass_score is at course level.
-    const isPassed = score >= step.course.pass_score
+    // Check if passed (based on course passScore, except pretest which is not strictly fail-blocking but determines skip)
+    // Actually schema says passScore is at course level.
+    const isPassed = score >= step.course.passScore
 
     const attemptCount = await prisma.quizAttempt.count({
-      where: { employee_id: employeeId, step_id },
+      where: { employeeId: employeeId, stepId },
     })
 
     // Save attempt
     const attempt = await prisma.quizAttempt.create({
       data: {
-        employee_id: employeeId,
-        step_id,
+        employeeId: employeeId,
+        stepId,
         score,
         passed: isPassed,
         answers,
-        attempt_no: attemptCount + 1,
+        attemptNo: attemptCount + 1,
       },
     })
 
     // If pre-test, we always mark step progress as completed so they can proceed, regardless of pass/fail.
     // If Quiz/Post-test, we only mark step progress as completed if they passed.
-    const shouldCompleteStep = step.step_type === 'PRETEST' || isPassed
+    const shouldCompleteStep = step.stepType === 'PRETEST' || isPassed
 
     if (shouldCompleteStep) {
       await prisma.stepProgress.upsert({
-        where: { employee_id_step_id: { employee_id: employeeId, step_id: step.id } },
-        update: { completed: true, watch_percent: 100 },
-        create: { employee_id: employeeId, step_id: step.id, completed: true, watch_percent: 100 },
+        where: { employeeId_stepId: { employeeId: employeeId, stepId: step.id } },
+        update: { completed: true, watchPercent: 100 },
+        create: { employeeId: employeeId, stepId: step.id, completed: true, watchPercent: 100 },
       })
     }
 
     // Trigger evaluation to check if course is completed or if skip logic needs to be executed
-    await evaluateCourseCompletion(employeeId, course_id)
+    await evaluateCourseCompletion(employeeId, courseId)
 
     return NextResponse.json({
       score,
@@ -83,8 +83,9 @@ export const POST = authMiddleware(async (request: NextRequest) => {
       should_complete_step: shouldCompleteStep
     })
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('[API] Quiz submission error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const errObj = error instanceof Error ? error.message : JSON.stringify(error)
+    return NextResponse.json({ error: errObj }, { status: 500 })
   }
-}) as any
+}

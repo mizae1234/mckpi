@@ -4,11 +4,11 @@ import { useState, useRef, useEffect } from 'react'
 import { CheckCircle2 } from 'lucide-react'
 
 // Simple mock for R2 video or actual mp4. If youtube, we'd need iframe logic.
-// For MKPI, content_url points to R2 bucket.
+// For MKPI, contentUrl points to R2 bucket.
 
 export default function VideoPlayerComponent({ step, courseId, onComplete }: { step: any, courseId: string, onComplete: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const [percent, setPercent] = useState(step.watch_percent || 0)
+  const [percent, setPercent] = useState(step.watchPercent || 0)
   const [isUpdating, setIsUpdating] = useState(false)
   
   // To avoid spamming API
@@ -39,9 +39,9 @@ export default function VideoPlayerComponent({ step, courseId, onComplete }: { s
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          step_id: step.id,
-          course_id: courseId,
-          watch_percent: newPercent
+          stepId: step.id,
+          courseId: courseId,
+          watchPercent: newPercent
         })
       })
 
@@ -49,7 +49,7 @@ export default function VideoPlayerComponent({ step, courseId, onComplete }: { s
         lastUpdatedPercent.current = newPercent
         setPercent(newPercent)
         
-        if (newPercent >= step.min_watch_percent && !step.is_completed) {
+        if (newPercent >= step.minWatchPercent && !step.is_completed) {
           onComplete()
         }
       }
@@ -62,10 +62,10 @@ export default function VideoPlayerComponent({ step, courseId, onComplete }: { s
 
   return (
     <div className="flex flex-col h-full bg-black">
-      {step.content_url ? (
+      {step.contentUrl ? (
         <video 
           ref={videoRef}
-          src={step.content_url} 
+          src={step.contentUrl} 
           controls 
           controlsList="nodownload"
           className="w-full h-full object-contain"

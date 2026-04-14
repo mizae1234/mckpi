@@ -72,39 +72,46 @@ enum CertificateStatus {
 model Admin {
   id            String    @id @default(cuid())
   username      String    @unique
-  password_hash String
+  passwordHash String
   name          String
   role          AdminRole @default(ADMIN)
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  assignments_created CourseAssignment[] @relation("AssignedByAdmin")
-
-  @@map("admins")
+  assignmentsCreated CourseAssignment[] @relation("AssignedByAdmin")
 }
 
 model Employee {
-  id            String         @id @default(cuid())
-  employee_code String         @unique // e.g. "E00001"
-  password_hash String
-  full_name     String
-  position      String         @default("")
-  department    String         @default("")
-  branch        String         @default("")
-  date_of_birth DateTime
-  start_date    DateTime       @default(now())
-  status        EmployeeStatus @default(ACTIVE)
-  created_at    DateTime       @default(now())
-  updated_at    DateTime       @updatedAt
+  id             String         @id @default(cuid())
+  employeeCode   String         @unique // e.g. "E00001"
+  passwordHash   String
+  fullName       String
+  positionCode   String?
+  departmentCode String?
+  branchCode     String?
+  dateOfBirth    DateTime
+  startDate      DateTime       @default(now())
+  status         EmployeeStatus @default(ACTIVE)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   assignments    CourseAssignment[]
   results        TrainingResult[]
-  quiz_attempts  QuizAttempt[]
-  step_progress  StepProgress[]
+  quizAttempts   QuizAttempt[]
+  stepProgress   StepProgress[]
   registrations  OfflineRegistration[]
   certificates   Certificate[]
+  branch         Branch?        @relation(fields: [branchCode], references: [code])
+}
 
-  @@map("employees")
+model Branch {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  name       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employees Employee[]
 }
 
 model Course {
@@ -112,168 +119,192 @@ model Course {
   code          String       @unique // e.g. "CRS-001"
   title         String
   description   String       @default("")
-  training_type TrainingType
-  pass_score    Int          @default(80)
-  is_mandatory  Boolean      @default(false)
-  thumbnail_url String?
+  trainingType TrainingType
+  passScore    Int          @default(80)
+  isMandatory  Boolean      @default(false)
+  thumbnailUrl String?
   status        CourseStatus @default(DRAFT)
-  created_at    DateTime     @default(now())
-  updated_at    DateTime     @updatedAt
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   steps        CourseStep[]
+  documents    CourseDocument[]
   sessions     OfflineSession[]
   assignments  CourseAssignment[]
   results      TrainingResult[]
   certificates Certificate[]
-
-  @@map("courses")
 }
 
 model CourseStep {
   id                String   @id @default(cuid())
-  course_id         String
-  step_type         StepType
+  courseId         String
+  stepType         StepType
   title             String
-  content_url       String?  // video/document URL on R2
-  order_index       Int      @default(0)
-  is_required       Boolean  @default(true)
-  min_watch_percent Int      @default(95) // for VIDEO type
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  contentUrl       String?  // video/document URL on R2
+  contentFilename  String?  // original uploaded filename
+  orderIndex       Int      @default(0)
+  isRequired       Boolean  @default(true)
+  minWatchPercent Int      @default(95) // for VIDEO type
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  course    Course         @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  course    Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
   questions Question[]
   progress  StepProgress[]
   attempts  QuizAttempt[]
+}
 
-  @@map("course_steps")
+model CourseDocument {
+  id         String   @id @default(cuid())
+  courseId  String
+  filename   String   // original filename
+  fileUrl   String   // R2 public URL
+  fileSize  Int      @default(0) // bytes
+  fileType  String   @default("") // MIME type
+  createdAt DateTime @default(now())
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 }
 
 model Question {
-  id             String   @id @default(cuid())
-  step_id        String
-  question_text  String
-  options        Json     // ["option A", "option B", ...]
-  correct_answer Int      // index of correct option
-  order_num      Int      @default(0)
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  id               String          @id @default(cuid())
+  stepId           String
+  questionText     String
+  options          Json            // ["option A", "option B", ...]
+  correctAnswer    Int             // index of correct option
+  orderNum         Int             @default(0)
+  masterQuestionId String?         // track which master question this was copied from
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
-  step CourseStep @relation(fields: [step_id], references: [id], onDelete: Cascade)
+  step           CourseStep       @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  masterQuestion MasterQuestion?  @relation(fields: [masterQuestionId], references: [id], onDelete: SetNull)
+}
 
-  @@map("questions")
+model QuestionSet {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  questions MasterQuestion[]
+}
+
+model MasterQuestion {
+  id            String   @id @default(cuid())
+  questionSetId String
+  questionText  String
+  options       Json     // ["ตัวเลือก A", "ตัวเลือก B", ...]
+  correctAnswer Int      // index of correct option
+  orderNum      Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  questionSet    QuestionSet @relation(fields: [questionSetId], references: [id], onDelete: Cascade)
+  copiedQuestions Question[] // questions that were copied from this master
 }
 
 model StepProgress {
   id            String   @id @default(cuid())
-  employee_id   String
-  step_id       String
+  employeeId   String
+  stepId       String
   completed     Boolean  @default(false)
-  watch_percent Float    @default(0) // for VIDEO type
-  last_position Float    @default(0) // last video position in seconds
-  updated_at    DateTime @updatedAt
+  watchPercent Float    @default(0) // for VIDEO type
+  lastPosition Float    @default(0) // last video position in seconds
+  updatedAt    DateTime @updatedAt
 
-  employee Employee   @relation(fields: [employee_id], references: [id], onDelete: Cascade)
-  step     CourseStep @relation(fields: [step_id], references: [id], onDelete: Cascade)
+  employee Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  step     CourseStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
 
-  @@unique([employee_id, step_id])
-  @@map("step_progress")
+  @@unique([employeeId, stepId])
 }
 
 model QuizAttempt {
   id          String   @id @default(cuid())
-  employee_id String
-  step_id     String
+  employeeId String
+  stepId     String
   score       Float
   passed      Boolean
-  attempt_no  Int
+  attemptNo  Int
   answers     Json     // submitted answers
-  created_at  DateTime @default(now())
+  createdAt  DateTime @default(now())
 
-  employee Employee   @relation(fields: [employee_id], references: [id], onDelete: Cascade)
-  step     CourseStep @relation(fields: [step_id], references: [id], onDelete: Cascade)
-
-  @@map("quiz_attempts")
+  employee Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  step     CourseStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
 }
 
 model CourseAssignment {
   id           String           @id @default(cuid())
-  employee_id  String
-  course_id    String
-  assigned_by  String?          // Admin ID
-  assigned_at  DateTime         @default(now())
-  due_date     DateTime?
+  employeeId  String
+  courseId    String
+  assignedBy  String?          // Admin ID
+  assignedAt  DateTime         @default(now())
+  dueDate     DateTime?
   status       AssignmentStatus @default(NOT_STARTED)
 
-  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
-  course   Course   @relation(fields: [course_id], references: [id], onDelete: Cascade)
-  admin    Admin?   @relation("AssignedByAdmin", fields: [assigned_by], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  admin    Admin?   @relation("AssignedByAdmin", fields: [assignedBy], references: [id])
 
-  @@unique([employee_id, course_id])
-  @@map("course_assignments")
+  @@unique([employeeId, courseId])
 }
 
 model OfflineSession {
   id           String   @id @default(cuid())
-  course_id    String
-  session_date DateTime
+  courseId    String
+  sessionDate DateTime
   location     String   @default("")
   capacity     Int      @default(30)
-  trainer_name String   @default("")
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  trainerName String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  course        Course                @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  course        Course                @relation(fields: [courseId], references: [id], onDelete: Cascade)
   registrations OfflineRegistration[]
-
-  @@map("offline_sessions")
 }
 
 model OfflineRegistration {
   id            String             @id @default(cuid())
-  employee_id   String
-  session_id    String
+  employeeId   String
+  sessionId    String
   status        RegistrationStatus @default(REGISTERED)
-  registered_at DateTime           @default(now())
+  registeredAt DateTime           @default(now())
 
-  employee Employee       @relation(fields: [employee_id], references: [id], onDelete: Cascade)
-  session  OfflineSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  employee Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  session  OfflineSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
-  @@unique([employee_id, session_id])
-  @@map("offline_registrations")
+  @@unique([employeeId, sessionId])
 }
 
 model TrainingResult {
   id           String       @id @default(cuid())
-  employee_id  String
-  course_id    String
+  employeeId  String
+  courseId    String
   status       ResultStatus @default(IN_PROGRESS)
   score        Float?
   source       ResultSource
-  completed_at DateTime?
-  created_at   DateTime     @default(now())
+  completedAt DateTime?
+  createdAt   DateTime     @default(now())
 
-  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
-  course   Course   @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
-  @@unique([employee_id, course_id, source])
-  @@map("training_results")
+  @@unique([employeeId, courseId, source])
 }
 
 model Certificate {
   id             String            @id @default(cuid())
-  certificate_no String            @unique // e.g. "MKPI-2026-00001"
-  employee_id    String
-  course_id      String
+  certificateNo String            @unique // e.g. "MKPI-2026-00001"
+  employeeId    String
+  courseId      String
   score          Float
-  issued_at      DateTime          @default(now())
+  issuedAt      DateTime          @default(now())
   status         CertificateStatus @default(VALID)
-  pdf_url        String?
-  revoked_at     DateTime?
-  revoked_reason String?
+  pdfUrl        String?
+  revokedAt     DateTime?
+  revokedReason String?
 
-  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
-  course   Course   @relation(fields: [course_id], references: [id], onDelete: Cascade)
-
-  @@map("certificates")
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
 }

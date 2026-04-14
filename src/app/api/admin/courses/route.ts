@@ -4,9 +4,9 @@ import { prisma } from '@/lib/prisma'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { code, title, description, training_type, pass_score, is_mandatory, status } = body
+    const { code, title, description, trainingType, passScore, isMandatory, status } = body
 
-    if (!code || !title || !training_type) {
+    if (!code || !title || !trainingType) {
       return NextResponse.json({ error: 'กรุณากรอกข้อมูลที่จำเป็น' }, { status: 400 })
     }
 
@@ -20,9 +20,9 @@ export async function POST(request: NextRequest) {
         code: code.toUpperCase(),
         title,
         description: description || '',
-        training_type,
-        pass_score: pass_score || 80,
-        is_mandatory: is_mandatory || false,
+        trainingType,
+        passScore: passScore || 80,
+        isMandatory: isMandatory || false,
         status: status || 'DRAFT',
       },
     })
@@ -42,7 +42,7 @@ export async function GET() {
           select: { steps: true, sessions: true, assignments: true, results: true },
         },
       },
-      orderBy: { created_at: 'desc' },
+      orderBy: { createdAt: 'desc' },
     })
     return NextResponse.json(courses)
   } catch (error) {

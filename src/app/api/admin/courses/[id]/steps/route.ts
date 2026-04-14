@@ -8,22 +8,24 @@ export async function POST(
   try {
     const { id: courseId } = await params
     const body = await request.json()
-    const { step_type, title, content_url, order_index, is_required, min_watch_percent } = body
+    const { stepType, title, contentUrl, contentFilename, orderIndex, isRequired, minWatchPercent } = body
 
-    if (!step_type || !title) {
+    if (!stepType || !title) {
       return NextResponse.json({ error: 'กรุณากรอกข้อมูลที่จำเป็น' }, { status: 400 })
     }
 
     const step = await prisma.courseStep.create({
       data: {
-        course_id: courseId,
-        step_type,
+        courseId: courseId,
+        stepType,
         title,
-        content_url: content_url || null,
-        order_index: order_index || 0,
-        is_required: is_required ?? true,
-        min_watch_percent: min_watch_percent || 95,
+        contentUrl: contentUrl || null,
+        contentFilename: contentFilename || null,
+        orderIndex: orderIndex || 0,
+        isRequired: isRequired ?? true,
+        minWatchPercent: minWatchPercent || 95,
       },
+      include: { _count: { select: { questions: true } } },
     })
 
     return NextResponse.json(step, { status: 201 })
@@ -39,9 +41,9 @@ export async function GET(
 ) {
   const { id: courseId } = await params
   const steps = await prisma.courseStep.findMany({
-    where: { course_id: courseId },
+    where: { courseId: courseId },
     include: { _count: { select: { questions: true } } },
-    orderBy: { order_index: 'asc' },
+    orderBy: { orderIndex: 'asc' },
   })
   return NextResponse.json(steps)
 }

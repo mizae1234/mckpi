@@ -11,12 +11,12 @@ interface AssignmentData {
     id: string
     code: string
     title: string
-    training_type: string
-    is_mandatory: boolean
+    trainingType: string
+    isMandatory: boolean
   }
   status: string
-  due_date: string | null
-  assigned_at: string
+  dueDate: string | null
+  assignedAt: string
 }
 
 export default function LearningDashboard() {
@@ -116,17 +116,17 @@ export default function LearningDashboard() {
           </div>
         ) : (
           assignments.map((assignment, i) => {
-            const statusInfo = getStatusInfo(assignment.status, assignment.due_date)
-            const typeInfo = getTypeLabel(assignment.course.training_type)
+            const statusInfo = getStatusInfo(assignment.status, assignment.dueDate)
+            const typeInfo = getTypeLabel(assignment.course.trainingType)
             const StatusIcon = statusInfo.icon
 
             return (
               <Link
                 key={assignment.id}
                 href={
-                  assignment.course.training_type === 'ONLINE'
+                  assignment.course.trainingType === 'ONLINE'
                     ? `/learning/courses/${assignment.course.id}`
-                    : assignment.course.training_type === 'OFFLINE'
+                    : assignment.course.trainingType === 'OFFLINE'
                       ? '/learning/offline'
                       : '/learning/results'
                 }
@@ -146,16 +146,16 @@ export default function LearningDashboard() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-semibold text-[var(--color-text)] truncate">{assignment.course.title}</h3>
-                      {assignment.course.is_mandatory && (
+                      {assignment.course.isMandatory && (
                         <span className="badge badge-danger text-[10px]">บังคับ</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`badge ${typeInfo.color} text-[10px]`}>{typeInfo.label}</span>
                       <span className={`badge ${statusInfo.color} text-[10px]`}>{statusInfo.label}</span>
-                      {assignment.due_date && (
+                      {assignment.dueDate && (
                         <span className="text-xs text-[var(--color-text-secondary)]">
-                          กำหนด: {new Date(assignment.due_date).toLocaleDateString('th-TH')}
+                          กำหนด: {new Date(assignment.dueDate).toLocaleDateString('th-TH')}
                         </span>
                       )}
                     </div>

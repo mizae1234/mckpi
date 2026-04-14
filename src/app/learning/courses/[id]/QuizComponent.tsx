@@ -7,6 +7,7 @@ export default function QuizComponent({ step, courseId, passScore, onComplete }:
   const [answers, setAnswers] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ score: number, is_passed: boolean, should_complete_step: boolean } | null>(null)
+  const [warning, setWarning] = useState('')
 
   const handleSelect = (questionId: string, optionIndex: number) => {
     if (result) return // Disable after submit
@@ -15,9 +16,11 @@ export default function QuizComponent({ step, courseId, passScore, onComplete }:
 
   const handleSubmit = async () => {
     if (Object.keys(answers).length < step.questions.length) {
-      alert('กรุณาตอบคำถามให้ครบทุกข้อ')
+      setWarning('กรุณาตอบคำถามให้ครบทุกข้อ')
+      setTimeout(() => setWarning(''), 3000)
       return
     }
+    setWarning('')
 
     setLoading(true)
     try {
@@ -25,8 +28,8 @@ export default function QuizComponent({ step, courseId, passScore, onComplete }:
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          step_id: step.id,
-          course_id: courseId,
+          stepId: step.id,
+          courseId: courseId,
           answers
         })
       })
@@ -37,9 +40,13 @@ export default function QuizComponent({ step, courseId, passScore, onComplete }:
         if (data.should_complete_step && !step.is_completed) {
           onComplete()
         }
+      } else {
+        const errData = await res.json()
+        setWarning(errData.error || 'เกิดข้อผิดพลาดในการส่งคำตอบ')
       }
     } catch (e) {
       console.error(e)
+      setWarning('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้')
     } finally {
       setLoading(false)
     }
@@ -65,21 +72,21 @@ export default function QuizComponent({ step, courseId, passScore, onComplete }:
           
           <div>
             <h3 className="text-2xl font-bold text-[var(--color-text)]">
-              {result.is_passed ? 'ยินดีด้วย! คุณสอบผ่าน' : step.step_type === 'PRETEST' ? 'การทดสอบเสร็จสิ้น' : 'เสียใจด้วย คุณสอบไม่ผ่าน'}
+              {result.is_passed ? 'ยินดีด้วย! คุณสอบผ่าน' : step.stepType === 'PRETEST' ? 'การทดสอบเสร็จสิ้น' : 'เสียใจด้วย คุณสอบไม่ผ่าน'}
             </h3>
             
-            {!result.is_passed && step.step_type === 'PRETEST' && (
+            {!result.is_passed && step.stepType === 'PRETEST' && (
               <p className="text-[var(--color-text-secondary)] mt-2">คุณจะต้องเรียนเนื้อหาให้ครบก่อนเพื่อปลดล็อคบททดสอบ Final</p>
             )}
-            {result.is_passed && step.step_type === 'PRETEST' && (
+            {result.is_passed && step.stepType === 'PRETEST' && (
               <p className="text-[var(--color-text-secondary)] mt-2 text-green-600 font-medium">✨ คุณทำคะแนนได้ดีเยี่ยม! ระบบปลดล็อคแบบทดสอบ Final ให้ทันที</p>
             )}
-            {!result.is_passed && step.step_type !== 'PRETEST' && (
+            {!result.is_passed && step.stepType !== 'PRETEST' && (
               <p className="text-[var(--color-text-secondary)] mt-2">คะแนนที่ต้องการ: {passScore}%</p>
             )}
           </div>
 
-          {!result.is_passed && step.step_type !== 'PRETEST' && (
+          {!result.is_passed && step.stepType !== 'PRETEST' && (
             <button onClick={() => { setResult(null); setAnswers({}) }} className="btn-secondary mx-auto mt-4">
               <RefreshCw className="w-5 h-5" /> ทำแบบทดสอบอีกครั้ง
             </button>
@@ -94,7 +101,7 @@ export default function QuizComponent({ step, courseId, passScore, onComplete }:
 
           {step.questions.map((q: any, i: number) => (
             <div key={q.id} className="p-6 rounded-2xl border border-[var(--color-border)] bg-gray-50/50 space-y-4">
-              <h4 className="font-medium text-[var(--color-text)]">ข้อที่ {i + 1}. {q.question_text}</h4>
+              <h4 className="font-medium text-[var(--color-text)]">ข้อที่ {i + 1}. {q.questionText}</h4>
               <div className="space-y-3">
                 {q.options.map((opt: string, optIndex: number) => (
                   <label 
@@ -119,11 +126,18 @@ export default function QuizComponent({ step, courseId, passScore, onComplete }:
             </div>
           ))}
 
+          {warning && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium animate-fade-in">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {warning}
+            </div>
+          )}
+
           <div className="flex justify-end pt-4">
             <button 
               onClick={handleSubmit} 
-              disabled={loading || Object.keys(answers).length < step.questions.length}
-              className="btn-primary px-8"
+              disabled={loading}
+              className={`px-8 transition-colors ${loading ? 'btn-secondary text-gray-500' : 'btn-primary'}`}
             >
               {loading ? 'กำลังส่งคำตอบ...' : 'ส่งคำตอบ'}
             </button>

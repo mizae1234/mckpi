@@ -61,7 +61,7 @@ export const POST = authMiddleware(async (request: NextRequest) => {
 
     // Cache mandatory courses once
     const mandatoryCourses = await prisma.course.findMany({
-      where: { is_mandatory: true, status: 'PUBLISHED' }
+      where: { isMandatory: true, status: 'PUBLISHED' }
     })
 
     // Transaction is risky here because we need to parse rows and if one row fails we don't want the whole batch to rollback.
@@ -74,7 +74,7 @@ export const POST = authMiddleware(async (request: NextRequest) => {
       const fullName = row['ชื่อ-นามสกุล'] || row['ชื่อ'] || row['Name'] || row['FullName']
       const position = row['ตำแหน่ง'] || row['Position'] || ''
       const department = row['แผนก'] || row['Department'] || ''
-      const branch = row['สาขา'] || row['Branch'] || ''
+      const branchRaw = row['สาขา'] || row['Branch'] || ''
       
       const dobRaw = row['วันเกิด (DD/MM/YYYY)'] || row['วันเกิด'] || row['DOB']
       const startDateRaw = row['วันเริ่มงาน (DD/MM/YYYY)'] || row['วันเริ่มงาน'] || row['StartDate']
@@ -87,9 +87,33 @@ export const POST = authMiddleware(async (request: NextRequest) => {
 
       const employeeCode = String(empCodeRaw).trim().toUpperCase()
 
+      let branchCode: string | null = null
+      if (branchRaw) {
+        const branchInput = String(branchRaw).trim()
+        
+        let branch = await prisma.branch.findFirst({ 
+          where: { 
+            OR: [
+              { code: branchInput },
+              { name: branchInput }
+            ]
+          } 
+        })
+        
+        if (!branch) {
+          branch = await prisma.branch.create({
+            data: {
+              code: branchInput,
+              name: branchInput
+            }
+          })
+        }
+        branchCode = branch.code
+      }
+
       // Look up existing employee
       const existingEmployee = await prisma.employee.findUnique({
-        where: { employee_code: employeeCode }
+        where: { employeeCode: employeeCode }
       })
 
       if (existingEmployee) {
@@ -98,10 +122,10 @@ export const POST = authMiddleware(async (request: NextRequest) => {
           await prisma.employee.update({
             where: { id: existingEmployee.id },
             data: {
-              full_name: fullName ? String(fullName) : existingEmployee.full_name,
-              position: position ? String(position) : existingEmployee.position,
-              department: department ? String(department) : existingEmployee.department,
-              branch: branch ? String(branch) : existingEmployee.branch,
+              fullName: fullName ? String(fullName) : existingEmployee.fullName,
+              positionCode: position ? String(position) : existingEmployee.positionCode,
+              departmentCode: department ? String(department) : existingEmployee.departmentCode,
+              branchCode: branchCode !== null ? branchCode : existingEmployee.branchCode,
             }
           })
           updatedCount++
@@ -138,27 +162,27 @@ export const POST = authMiddleware(async (request: NextRequest) => {
 
           const newEmployee = await prisma.employee.create({
             data: {
-              employee_code: employeeCode,
-              full_name: String(fullName),
-              password_hash: passwordHash,
-              position: String(position),
-              department: String(department),
-              branch: String(branch),
-              date_of_birth: dob,
-              start_date: actualStartDate,
+              employeeCode: employeeCode,
+              fullName: String(fullName),
+              passwordHash: passwordHash,
+              positionCode: String(position),
+              departmentCode: String(department),
+              branchCode: branchCode,
+              dateOfBirth: dob,
+              startDate: actualStartDate,
             }
           })
 
           // Auto-assign mandatory courses
           if (mandatoryCourses.length > 0) {
             const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000
-            const dueDate = new Date(newEmployee.start_date.getTime() + thirtyDaysMs)
+            const dueDate = new Date(newEmployee.startDate.getTime() + thirtyDaysMs)
 
             await prisma.courseAssignment.createMany({
               data: mandatoryCourses.map(c => ({
-                employee_id: newEmployee.id,
-                course_id: c.id,
-                due_date: dueDate,
+                employeeId: newEmployee.id,
+                courseId: c.id,
+                dueDate: dueDate,
               }))
             })
           }

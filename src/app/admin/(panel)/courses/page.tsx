@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { Plus, BookOpen } from 'lucide-react'
+import DeleteCourseButton from './DeleteCourseButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +17,7 @@ export default async function CoursesPage() {
         },
       },
     },
-    orderBy: { created_at: 'desc' },
+    orderBy: { createdAt: 'desc' },
   })
 
   const getTypeBadge = (type: string) => {
@@ -69,13 +70,16 @@ export default async function CoursesPage() {
             >
               <div className="flex items-start justify-between mb-3">
                 <span className="font-mono text-xs text-[var(--color-text-secondary)]">{course.code}</span>
-                <div className="flex gap-1">
-                  <span className={`badge ${getTypeBadge(course.training_type)} text-[10px]`}>
-                    {course.training_type}
+                <div className="flex items-center gap-1">
+                  <span className={`badge ${getTypeBadge(course.trainingType)} text-[10px]`}>
+                    {course.trainingType}
                   </span>
                   <span className={`badge ${getStatusBadge(course.status)} text-[10px]`}>
                     {course.status}
                   </span>
+                  <div className="ml-1 border-l border-gray-200 pl-2">
+                    <DeleteCourseButton courseId={course.id} courseTitle={course.title} />
+                  </div>
                 </div>
               </div>
               <h3 className="font-semibold text-[var(--color-text)] mb-2 group-hover:text-primary transition-colors">
@@ -85,16 +89,16 @@ export default async function CoursesPage() {
                 {course.description || 'ไม่มีคำอธิบาย'}
               </p>
               <div className="flex items-center gap-4 text-xs text-[var(--color-text-secondary)]">
-                {course.training_type === 'ONLINE' && (
+                {course.trainingType === 'ONLINE' && (
                   <span>{course._count.steps} ขั้นตอน</span>
                 )}
-                {course.training_type === 'OFFLINE' && (
+                {course.trainingType === 'OFFLINE' && (
                   <span>{course._count.sessions} รอบ</span>
                 )}
                 <span>{course._count.assignments} คนเรียน</span>
-                <span>ผ่าน ≥ {course.pass_score}%</span>
+                <span>ผ่าน ≥ {course.passScore}%</span>
               </div>
-              {course.is_mandatory && (
+              {course.isMandatory && (
                 <div className="mt-3">
                   <span className="badge badge-danger text-[10px]">บังคับ</span>
                 </div>

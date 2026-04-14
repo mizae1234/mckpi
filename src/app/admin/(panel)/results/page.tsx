@@ -6,10 +6,10 @@ export const dynamic = 'force-dynamic'
 export default async function ResultsPage() {
   const results = await prisma.trainingResult.findMany({
     include: {
-      employee: { select: { employee_code: true, full_name: true, department: true } },
-      course: { select: { code: true, title: true, training_type: true } },
+      employee: { select: { employeeCode: true, fullName: true, departmentCode: true } },
+      course: { select: { code: true, title: true, trainingType: true } },
     },
-    orderBy: { created_at: 'desc' },
+    orderBy: { createdAt: 'desc' },
   })
 
   const getStatusBadge = (status: string) => {
@@ -76,8 +76,8 @@ export default async function ResultsPage() {
                 return (
                   <tr key={r.id}>
                     <td>
-                      <div className="font-medium">{r.employee.full_name}</div>
-                      <div className="text-xs text-[var(--color-text-secondary)]">{r.employee.employee_code}</div>
+                      <div className="font-medium">{r.employee.fullName}</div>
+                      <div className="text-xs text-[var(--color-text-secondary)]">{r.employee.employeeCode}</div>
                     </td>
                     <td>
                       <div className="font-medium">{r.course.title}</div>
@@ -90,7 +90,7 @@ export default async function ResultsPage() {
                     <td>
                       <span className={`badge ${getStatusBadge(r.status)}`}>{getStatusLabel(r.status)}</span>
                     </td>
-                    <td>{r.completed_at ? new Date(r.completed_at).toLocaleDateString('th-TH') : '-'}</td>
+                    <td>{r.completedAt ? new Date(r.completedAt).toLocaleDateString('th-TH') : '-'}</td>
                   </tr>
                 )
               })

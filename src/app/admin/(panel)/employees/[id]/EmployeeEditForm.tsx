@@ -4,25 +4,35 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Save, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
+import { useModal } from '@/components/ModalProvider'
 
 interface EmployeeData {
   id: string
-  employee_code: string
-  full_name: string
-  position: string
-  department: string
-  branch: string
-  date_of_birth: string
-  start_date: string
+  employeeCode: string
+  fullName: string
+  positionCode: string
+  departmentCode: string
+  branchCode: string | null
+  dateOfBirth: string
+  startDate: string
   status: string
 }
 
 export default function EmployeeEditForm({ employee }: { employee: EmployeeData }) {
   const router = useRouter()
+  const { showConfirm } = useModal()
   const [loading, setLoading] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [branches, setBranches] = useState<{ code: string; name: string }[]>([])
+
+  useState(() => {
+    fetch('/api/admin/branches')
+      .then(res => res.json())
+      .then(data => Array.isArray(data) && setBranches(data))
+      .catch(err => console.error(err))
+  })
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -32,12 +42,12 @@ export default function EmployeeEditForm({ employee }: { employee: EmployeeData 
 
     const formData = new FormData(e.currentTarget)
     const data = {
-      full_name: formData.get('full_name'),
-      position: formData.get('position'),
-      department: formData.get('department'),
-      branch: formData.get('branch'),
-      date_of_birth: formData.get('date_of_birth'),
-      start_date: formData.get('start_date'),
+      fullName: formData.get('fullName'),
+      positionCode: formData.get('position'),
+      departmentCode: formData.get('department'),
+      branchCode: formData.get('branchCode'),
+      dateOfBirth: formData.get('dateOfBirth'),
+      startDate: formData.get('startDate'),
       status: formData.get('status'),
     }
 
@@ -64,7 +74,8 @@ export default function EmployeeEditForm({ employee }: { employee: EmployeeData 
   }
 
   const handleResetPassword = async () => {
-    if (!confirm('ต้องการรีเซ็ตรหัสผ่านกลับเป็นวันเดือนปีเกิด?')) return
+    const ok = await showConfirm({ title: 'รีเซ็ตรหัสผ่าน', message: 'ต้องการรีเซ็ตรหัสผ่านกลับเป็นวันเดือนปีเกิด?', type: 'warning', confirmText: 'รีเซ็ต' })
+    if (!ok) return
     setResetLoading(true)
     setMessage('')
 
@@ -89,31 +100,36 @@ export default function EmployeeEditForm({ employee }: { employee: EmployeeData 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
           <label className="block text-sm font-medium text-[var(--color-text)] mb-1">รหัสพนักงาน</label>
-          <input className="input-field bg-gray-50" value={employee.employee_code} disabled />
+          <input className="input-field bg-gray-50" value={employee.employeeCode} disabled />
         </div>
         <div>
           <label className="block text-sm font-medium text-[var(--color-text)] mb-1">ชื่อ-นามสกุล *</label>
-          <input name="full_name" className="input-field" defaultValue={employee.full_name} required />
+          <input name="fullName" className="input-field" defaultValue={employee.fullName} required />
         </div>
         <div>
           <label className="block text-sm font-medium text-[var(--color-text)] mb-1">ตำแหน่ง</label>
-          <input name="position" className="input-field" defaultValue={employee.position} />
+          <input name="position" className="input-field" defaultValue={employee.positionCode} />
         </div>
         <div>
           <label className="block text-sm font-medium text-[var(--color-text)] mb-1">แผนก</label>
-          <input name="department" className="input-field" defaultValue={employee.department} />
+          <input name="department" className="input-field" defaultValue={employee.departmentCode} />
         </div>
         <div>
           <label className="block text-sm font-medium text-[var(--color-text)] mb-1">สาขา</label>
-          <input name="branch" className="input-field" defaultValue={employee.branch} />
+          <select name="branchCode" className="input-field" defaultValue={employee.branchCode || ''}>
+            <option value="">- ระบุสาขา -</option>
+            {branches.map(b => (
+              <option key={b.code} value={b.code}>{b.name} ({b.code})</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-sm font-medium text-[var(--color-text)] mb-1">วันเกิด</label>
-          <input name="date_of_birth" type="date" className="input-field" defaultValue={employee.date_of_birth} />
+          <input name="dateOfBirth" type="date" className="input-field" defaultValue={employee.dateOfBirth} />
         </div>
         <div>
           <label className="block text-sm font-medium text-[var(--color-text)] mb-1">วันเริ่มงาน</label>
-          <input name="start_date" type="date" className="input-field" defaultValue={employee.start_date} />
+          <input name="startDate" type="date" className="input-field" defaultValue={employee.startDate} />
         </div>
         <div>
           <label className="block text-sm font-medium text-[var(--color-text)] mb-1">สถานะ</label>

@@ -9,7 +9,7 @@ export default async function SessionsPage() {
       course: { select: { code: true, title: true } },
       _count: { select: { registrations: true } },
     },
-    orderBy: { session_date: 'desc' },
+    orderBy: { sessionDate: 'desc' },
   })
 
   return (
@@ -52,9 +52,9 @@ export default async function SessionsPage() {
                     <div className="font-medium">{s.course.title}</div>
                     <div className="text-xs text-[var(--color-text-secondary)]">{s.course.code}</div>
                   </td>
-                  <td>{s.session_date.toLocaleDateString('th-TH', { dateStyle: 'long' })}</td>
+                  <td>{s.sessionDate.toLocaleDateString('th-TH', { dateStyle: 'long' })}</td>
                   <td>{s.location || '-'}</td>
-                  <td>{s.trainer_name || '-'}</td>
+                  <td>{s.trainerName || '-'}</td>
                   <td>
                     <span className="font-semibold">{s._count.registrations}</span>
                   </td>
