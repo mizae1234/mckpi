@@ -13,7 +13,7 @@ export async function PUT(
     const dataToUpdate: any = {}
     if (status !== undefined) dataToUpdate.status = status
     if (title !== undefined) dataToUpdate.title = title
-    if (description !== undefined) dataToUpdate.description = description === '' ? null : description
+    if (description !== undefined) dataToUpdate.description = description || ''
     if (trainingType !== undefined) dataToUpdate.trainingType = trainingType
     if (passScore !== undefined) dataToUpdate.passScore = passScore
     if (creditHours !== undefined) dataToUpdate.creditHours = creditHours

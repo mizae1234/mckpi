@@ -52,6 +52,7 @@ export default async function ResultsPage() {
                   <th className="p-4 font-semibold text-gray-600 text-center">ประเภท</th>
                   <th className="p-4 font-semibold text-gray-600 text-center">สถานะ</th>
                   <th className="p-4 font-semibold text-gray-600 text-center">คะแนนล่าสุด</th>
+                  <th className="p-4 font-semibold text-gray-600">วันที่เริ่ม/ลงทะเบียน</th>
                   <th className="p-4 font-semibold text-gray-600">วันที่สำเร็จ</th>
                 </tr>
               </thead>
@@ -59,6 +60,9 @@ export default async function ResultsPage() {
                 {results.map((result) => (
                   <tr key={result.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="p-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono text-[10px] text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-md">{result.course.code}</span>
+                      </div>
                       <div className="font-medium text-[var(--color-text)]">{result.course.title}</div>
                       <Link href={`/learning/courses/${result.courseId}`} className="text-xs text-primary hover:underline mt-1 block">
                         ดูรายละเอียดคอร์ส
@@ -79,6 +83,10 @@ export default async function ResultsPage() {
                           <div className="flex items-center gap-1.5 text-red-600 bg-red-50 px-3 py-1 rounded-full text-xs font-medium">
                             <XCircle className="w-3.5 h-3.5" /> ไม่ผ่าน
                           </div>
+                        ) : result.source === 'OFFLINE' ? (
+                          <div className="flex items-center gap-1.5 text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-xs font-medium">
+                            <Clock className="w-3.5 h-3.5" /> ลงทะเบียนแล้ว
+                          </div>
                         ) : (
                           <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 px-3 py-1 rounded-full text-xs font-medium">
                             <Clock className="w-3.5 h-3.5" /> กำลังเรียน
@@ -88,6 +96,9 @@ export default async function ResultsPage() {
                     </td>
                     <td className="p-4 text-center font-bold text-gray-700">
                       {result.score !== null ? `${result.score}%` : '-'}
+                    </td>
+                    <td className="p-4 text-gray-500 text-xs">
+                      {formatDate(result.createdAt)}
                     </td>
                     <td className="p-4 text-gray-500 text-xs">
                       {formatDate(result.completedAt)}

@@ -36,6 +36,7 @@ export default async function CoursesCatalogPage() {
     description: course.description,
     trainingType: course.trainingType,
     isMandatory: course.isMandatory,
+    creditHours: course.creditHours,
     stepCount: course._count?.steps || 0,
     sessionCount: course._count?.sessions || 0,
     assignmentStatus: assignmentMap.get(course.id)?.status || null

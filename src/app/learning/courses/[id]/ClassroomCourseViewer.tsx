@@ -15,20 +15,22 @@ export default function ClassroomCourseViewer({
 }) {
   const router = useRouter()
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState('')
 
   const handleRegister = async (sessionId: string) => {
     if (!confirm('ยืนยันการลงทะเบียนในที่นั่งรอบเวลานี้?')) return
     setLoadingId(sessionId)
+    setErrorMsg('')
     try {
       const res = await fetch(`/api/employee/courses/${course.id}/sessions/${sessionId}/register`, { method: 'POST' })
       if (!res.ok) {
         const d = await res.json()
-        alert(d.error || 'เกิดข้อผิดพลาดในการลงทะเบียน')
+        setErrorMsg(d.error || 'เกิดข้อผิดพลาดในการลงทะเบียน')
       } else {
         router.refresh()
       }
     } catch {
-      alert('Network Error')
+      setErrorMsg('Network Error')
     } finally {
       setLoadingId(null)
     }
@@ -37,16 +39,17 @@ export default function ClassroomCourseViewer({
   const handleCancel = async (sessionId: string) => {
     if (!confirm('ต้องการยกเลิกการลงทะเบียนหรือไม่? ระบบจะเก็บประวัติการยกเลิกของคุณเอาไว้')) return
     setLoadingId(sessionId + '-cancel')
+    setErrorMsg('')
     try {
       const res = await fetch(`/api/employee/courses/${course.id}/sessions/${sessionId}/cancel`, { method: 'POST' })
       if (!res.ok) {
         const d = await res.json()
-        alert(d.error || 'เกิดข้อผิดพลาดในการยกเลิก')
+        setErrorMsg(d.error || 'เกิดข้อผิดพลาดในการยกเลิก')
       } else {
         router.refresh()
       }
     } catch {
-      alert('Network Error')
+      setErrorMsg('Network Error')
     } finally {
       setLoadingId(null)
     }
@@ -77,6 +80,18 @@ export default function ClassroomCourseViewer({
 
       {/* Session List */}
       <div className="space-y-6">
+        {errorMsg && (
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <XCircle className="w-5 h-5" />
+              <span className="text-sm font-medium">{errorMsg}</span>
+            </div>
+            <button onClick={() => setErrorMsg('')} className="p-1 hover:bg-red-100 rounded-full">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         <h2 className="text-xl font-bold text-[var(--color-text)] px-2">รอบอบรมทั้งหมด ({sessions.length} รอบ)</h2>
         
         {sessions.length === 0 ? (

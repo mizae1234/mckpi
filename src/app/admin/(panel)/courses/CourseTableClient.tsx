@@ -1,13 +1,25 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { Plus, Search, ChevronDown, ChevronRight, Edit, Settings } from 'lucide-react'
+import { Plus, Search, ChevronDown, ChevronRight, Edit, Settings, MoreVertical, Users } from 'lucide-react'
 import DeleteCourseButton from './DeleteCourseButton'
 
 export default function CourseTableClient({ courses }: { courses: any[] }) {
   const [search, setSearch] = useState('')
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const menuRef = useRef<HTMLTableSectionElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const toggleRow = (id: string, e: React.MouseEvent) => {
     e.preventDefault()
@@ -71,7 +83,7 @@ export default function CourseTableClient({ courses }: { courses: any[] }) {
         </div>
       </div>
 
-      <div className="table-container shadow-sm border border-[var(--color-border)]">
+      <div className="table-container shadow-sm border border-[var(--color-border)] min-h-[300px]">
         <table>
           <thead>
             <tr>
@@ -133,11 +145,39 @@ export default function CourseTableClient({ courses }: { courses: any[] }) {
                         {course.assignmentCount} <span className="text-xs text-gray-500 font-normal">คน</span>
                       </td>
                       <td>
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-2 relative">
                           <DeleteCourseButton courseId={course.id} courseTitle={course.title} />
-                          <Link href={`/admin/courses/${course.id}`} className="p-2 text-gray-400 hover:text-primary hover:bg-red-50 rounded-lg transition-colors" title="ตั้งค่าหลักสูตร">
-                            <Settings className="w-4 h-4" />
-                          </Link>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setOpenMenuId(openMenuId === course.id ? null : course.id)
+                            }}
+                            className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                          >
+                            <MoreVertical className="w-5 h-5" />
+                          </button>
+
+                          {openMenuId === course.id && (
+                            <div className="absolute right-8 top-0 w-48 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
+                              <div className="py-1">
+                                <Link 
+                                  href={`/admin/courses/${course.id}`} 
+                                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
+                                >
+                                  <Settings className="w-4 h-4" />
+                                  ตั้งค่าหลักสูตร
+                                </Link>
+                                <Link 
+                                  href={`/admin/courses/${course.id}/trainees`} 
+                                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
+                                >
+                                  <Users className="w-4 h-4" />
+                                  จัดการผู้เข้าอบรม
+                                </Link>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>

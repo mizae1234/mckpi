@@ -38,7 +38,7 @@ export default async function LearningCourseDetailPage({ params }: { params: Pro
 
   if (course.trainingType === 'OFFLINE') {
     const registrations = await prisma.offlineRegistration.findMany({
-      where: { employeeId, courseId: id }
+      where: { employeeId, session: { courseId: id } }
     })
     return <ClassroomCourseViewer course={course} sessions={course.sessions} myRegistrations={registrations} />
   }

@@ -209,7 +209,7 @@ export default function LearningDashboard() {
             <div className="space-y-4">
               <h2 className="text-lg font-bold text-[var(--color-text)] flex items-center gap-2">
                 <BookOpen className="w-5 h-5" />
-                คอร์สทั่วไปที่ได้รับมอบหมาย
+                หลักสูตรที่กำลังเรียน
               </h2>
               <div className="space-y-3">
                 {pendingGeneral.map(assignment => renderCourseCard(assignment, false))}

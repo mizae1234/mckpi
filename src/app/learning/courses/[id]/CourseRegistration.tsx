@@ -7,9 +7,11 @@ import { BookOpen, CheckCircle2, Clock, PlayCircle } from 'lucide-react'
 export default function CourseRegistration({ course }: { course: any }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleRegister = async () => {
     setLoading(true)
+    setError('')
     try {
       const res = await fetch(`/api/employee/courses/${course.id}/register`, {
         method: 'POST',
@@ -20,12 +22,12 @@ export default function CourseRegistration({ course }: { course: any }) {
         router.refresh()
       } else {
         const data = await res.json()
-        alert(data.error || 'ไม่สามารถลงทะเบียนได้')
+        setError(data.error || 'ไม่สามารถลงทะเบียนได้')
         setLoading(false)
       }
     } catch (err) {
       console.error(err)
-      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ')
+      setError('เกิดข้อผิดพลาดในการเชื่อมต่อ')
       setLoading(false)
     }
   }
@@ -87,6 +89,9 @@ export default function CourseRegistration({ course }: { course: any }) {
               )}
             </button>
           </div>
+          {error && (
+            <p className="text-center text-sm text-red-500 mt-3 font-medium">{error}</p>
+          )}
           <p className="text-center text-xs text-gray-400 mt-4">
             การลงทะเบียนจะบันทึกข้อมูลเข้าสู่ประวัติการอบรมของคุณ
           </p>
