@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { code, title, description, trainingType, passScore, isMandatory, status } = body
+    const { code, title, description, trainingType, passScore, creditHours, isMandatory, status, kpiIds } = body
 
     if (!code || !title || !trainingType) {
       return NextResponse.json({ error: 'กรุณากรอกข้อมูลที่จำเป็น' }, { status: 400 })
@@ -22,10 +22,19 @@ export async function POST(request: NextRequest) {
         description: description || '',
         trainingType,
         passScore: passScore || 80,
+        creditHours: creditHours || 0,
         isMandatory: isMandatory || false,
         status: status || 'DRAFT',
       },
     })
+
+    // Create KPI mappings if provided
+    if (kpiIds && Array.isArray(kpiIds) && kpiIds.length > 0) {
+      await prisma.kpiCourse.createMany({
+        data: kpiIds.map((kpiId: string) => ({ kpiId, courseId: course.id })),
+        skipDuplicates: true,
+      })
+    }
 
     return NextResponse.json(course, { status: 201 })
   } catch (error) {
@@ -40,6 +49,9 @@ export async function GET() {
       include: {
         _count: {
           select: { steps: true, sessions: true, assignments: true, results: true },
+        },
+        kpis: {
+          include: { kpi: { select: { id: true, code: true, name: true, year: true } } },
         },
       },
       orderBy: { createdAt: 'desc' },

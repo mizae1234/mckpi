@@ -1,10 +1,12 @@
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Plus, PlayCircle, ClipboardCheck, FileText, Edit } from 'lucide-react'
+import { ArrowLeft, PlayCircle, ClipboardCheck, FileText, Target } from 'lucide-react'
 import CourseStepsManager from './CourseStepsManager'
 import CourseDocumentsManager from './CourseDocumentsManager'
 import CourseStatusToggle from './CourseStatusToggle'
+import CourseSessionsManager from './CourseSessionsManager'
+import CourseEditButton from './CourseEditButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,8 +18,14 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
     include: {
       steps: { orderBy: { orderIndex: 'asc' }, include: { _count: { select: { questions: true } } } },
       documents: { orderBy: { createdAt: 'desc' } },
-      sessions: { orderBy: { sessionDate: 'desc' }, include: { _count: { select: { registrations: true } } } },
+      sessions: {
+        orderBy: { sessionDate: 'desc' },
+        include: { _count: { select: { registrations: true } } }
+      },
       _count: { select: { assignments: true, results: true } },
+      kpis: {
+        include: { kpi: { select: { id: true, code: true, name: true, year: true, target: true } } },
+      },
     },
   })
 
@@ -25,9 +33,6 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
 
   const getTypeBadge = (type: string) => {
     switch (type) { case 'ONLINE': return 'badge-info'; case 'OFFLINE': return 'badge-accent'; default: return 'badge-primary' }
-  }
-  const getStepIcon = (type: string) => {
-    switch (type) { case 'VIDEO': return PlayCircle; case 'DOCUMENT': return FileText; default: return ClipboardCheck }
   }
 
   return (
@@ -42,14 +47,45 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
             <span className="font-mono text-sm text-[var(--color-text-secondary)]">{course.code}</span>
             <span className={`badge ${getTypeBadge(course.trainingType)} text-[10px]`}>
               {course.trainingType === 'ONLINE' ? 'ออนไลน์ (วิดีโอ + ข้อสอบ)' : 
-               course.trainingType === 'OFFLINE' ? 'ออฟไลน์ (อบรมรอบ)' : 
+               course.trainingType === 'OFFLINE' ? 'Classroom (ตามรอบ / ไลฟ์)' : 
                'ภายนอก (แนบเอกสาร)'}
             </span>
-            <span className={`badge ${course.status === 'PUBLISHED' ? 'badge-success' : 'badge-warning'} text-[10px]`}>{course.status}</span>
+            <span className={`badge ${
+              course.status === 'PUBLISHED' ? 'badge-success' : 
+              course.status === 'COMPLETED' ? 'badge-info' : 
+              course.status === 'ARCHIVED' ? 'badge-gray' : 
+              'badge-warning'
+            } text-[10px]`}>
+              {course.status === 'COMPLETED' ? '✅ เสร็จสิ้น' : course.status}
+            </span>
             {course.isMandatory && <span className="badge badge-danger text-[10px]">บังคับ</span>}
           </div>
-          <h1 className="text-2xl font-bold text-[var(--color-text)]">{course.title}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-[var(--color-text)]">{course.title}</h1>
+            <CourseEditButton course={{
+              id: course.id,
+              title: course.title,
+              description: course.description,
+              passScore: course.passScore,
+              isMandatory: course.isMandatory,
+              trainingType: course.trainingType,
+              kpiIds: course.kpis.map(kc => kc.kpi.id),
+            }} />
+          </div>
           <p className="text-sm text-[var(--color-text-secondary)] mt-1">{course.description || 'ไม่มีคำอธิบาย'}</p>
+
+          {/* KPI Badges */}
+          {course.kpis.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {course.kpis.map(kc => (
+                <span key={kc.kpi.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-orange-50 text-orange-700 text-xs font-medium border border-orange-100">
+                  <Target className="w-3 h-3" />
+                  {kc.kpi.name}
+                  <span className="text-orange-400 text-[10px]">({kc.kpi.year})</span>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <CourseStatusToggle courseId={course.id} currentStatus={course.status} />
       </div>
@@ -74,8 +110,8 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         </div>
       </div>
 
-      {/* Course Steps (ONLINE only) */}
-      {course.trainingType === 'ONLINE' && (
+      {/* Course Steps (ONLINE & OFFLINE) */}
+      {(course.trainingType === 'ONLINE' || course.trainingType === 'OFFLINE') && (
         <div className="stat-card p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-[var(--color-text)]">โครงสร้างบทเรียน</h2>
@@ -95,37 +131,23 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         </div>
       )}
 
-      {/* Offline Sessions */}
-      {course.trainingType === 'OFFLINE' && (
-        <div className="stat-card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-[var(--color-text)]">รอบอบรม</h2>
-          </div>
-
-          {course.sessions.length === 0 ? (
-            <p className="text-sm text-[var(--color-text-secondary)]">ยังไม่มีรอบอบรม</p>
-          ) : (
-            <div className="space-y-3">
-              {course.sessions.map(session => (
-                <div key={session.id} className="flex items-center gap-4 p-3 rounded-xl border border-[var(--color-border)] hover:bg-[var(--color-surface-alt)] transition-colors">
-                  <div className="flex-1">
-                    <div className="font-medium text-[var(--color-text)]">
-                      {session.sessionDate.toLocaleDateString('th-TH', { dateStyle: 'long' })}
-                    </div>
-                    <div className="text-sm text-[var(--color-text-secondary)]">
-                      📍 {session.location} • 👤 {session.trainerName}
-                    </div>
-                  </div>
-                  <div className="text-sm">
-                    <span className="font-semibold">{session._count.registrations}</span>
-                    <span className="text-[var(--color-text-secondary)]"> / {session.capacity} คน</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* Sessions (All types) */}
+      <div className="stat-card p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-[var(--color-text)]">รอบอบรม</h2>
         </div>
-      )}
+        <CourseSessionsManager courseId={course.id} initialSessions={course.sessions.map(s => ({
+          id: s.id,
+          sessionDate: s.sessionDate.toISOString(),
+          sessionEndDate: s.sessionEndDate?.toISOString() || null,
+          registrationEndDate: s.registrationEndDate?.toISOString() || null,
+          location: s.location,
+          capacity: s.capacity,
+          waitlistCapacity: s.waitlistCapacity,
+          trainerName: s.trainerName,
+          registrationCount: s._count.registrations,
+        }))} />
+      </div>
 
       {/* Course Documents (all types) */}
       <div className="stat-card p-6">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { PlayCircle, FileText, ClipboardCheck, Lock, CheckCircle2, FastForward } from 'lucide-react'
 import Link from 'next/link'
 import VideoPlayerComponent from './VideoPlayerComponent'
@@ -23,6 +23,7 @@ interface StepData {
   watchPercent: number
   is_unlocked: boolean
   is_skipped: boolean
+  latestAttemptScore?: number | null
   questions: QuestionData[]
 }
 
@@ -31,13 +32,25 @@ interface CoursePlayerProps {
   steps: StepData[]
 }
 
-export default function CoursePlayer({ course, steps }: CoursePlayerProps) {
+export default function CoursePlayer({ course, steps: initialSteps }: CoursePlayerProps) {
   const router = useRouter()
+  const [steps, setSteps] = useState(initialSteps)
+  
   // Default to first unlocked step that isn't completed and isn't skipped
-  const initialStepIndex = steps.findIndex(s => s.is_unlocked && !s.is_completed && !s.is_skipped)
-  const [activeStepIndex, setActiveStepIndex] = useState(initialStepIndex >= 0 ? initialStepIndex : 0)
+  const [activeStepIndex, setActiveStepIndex] = useState(() => {
+    const idx = initialSteps.findIndex(s => s.is_unlocked && !s.is_completed && !s.is_skipped)
+    return idx >= 0 ? idx : 0
+  })
+
+  useEffect(() => {
+    setSteps(initialSteps)
+  }, [initialSteps])
 
   const activeStep = steps[activeStepIndex]
+
+  const handleProgress = (stepId: string, newPercent: number) => {
+    setSteps(prev => prev.map(s => s.id === stepId ? { ...s, watchPercent: newPercent } : s))
+  }
 
   const getStepIcon = (type: string, isCompleted: boolean, isLocked: boolean, isSkipped: boolean) => {
     if (isCompleted) return <CheckCircle2 className="w-5 h-5 text-green-500" />
@@ -73,7 +86,8 @@ export default function CoursePlayer({ course, steps }: CoursePlayerProps) {
               <VideoPlayerComponent 
                 courseId={course.id}
                 step={activeStep} 
-                onComplete={handleStepComplete} 
+                onComplete={handleStepComplete}
+                onProgress={handleProgress}
               />
             ) : ['QUIZ', 'PRETEST', 'POSTTEST'].includes(activeStep.stepType) ? (
               <QuizComponent 

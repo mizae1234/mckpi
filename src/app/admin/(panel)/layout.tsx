@@ -19,6 +19,7 @@ import {
   GraduationCap,
   Building2,
   Library,
+  Target,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -34,14 +35,15 @@ const menuGroups = [
     items: [
       { href: '/admin/employees', icon: Users, label: 'จัดการพนักงาน' },
       { href: '/admin/departments', icon: Building2, label: 'จัดการแผนก' },
+      { href: '/admin/kpis', icon: Target, label: 'จัดการ KPI' },
     ],
   },
   {
     title: 'TRAINING',
     items: [
-      { href: '/admin/courses', icon: BookOpen, label: 'จัดการคอร์ส' },
+      { href: '/admin/courses', icon: BookOpen, label: 'การจัดการหลักสูตร' },
       { href: '/admin/question-bank', icon: Library, label: 'คลังคำถาม' },
-      { href: '/admin/assignments', icon: ClipboardList, label: 'มอบหมายงาน' },
+      { href: '/admin/assignments', icon: ClipboardList, label: 'มอบหมายหลักสูตร' },
       { href: '/admin/sessions', icon: CalendarCheck, label: 'รอบอบรม Offline' },
       { href: '/admin/results', icon: BarChart3, label: 'ผลลัพธ์ & Import' },
       { href: '/admin/certificates', icon: Award, label: 'ใบรับรอง' },

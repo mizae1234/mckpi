@@ -10,30 +10,31 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { employeeId, courseId, dueDate } = body
+    const { employeeIds, courseIds, dueDate } = body
 
-    if (!employeeId || !courseId) {
-      return NextResponse.json({ error: 'กรุณาเลือกพนักงานและคอร์ส' }, { status: 400 })
+    if (!employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0 ||
+        !courseIds || !Array.isArray(courseIds) || courseIds.length === 0) {
+      return NextResponse.json({ error: 'กรุณาเลือกพนักงานและคอร์สอย่างน้อย 1 รายการ' }, { status: 400 })
     }
 
-    // Check duplicate
-    const existing = await prisma.courseAssignment.findUnique({
-      where: { employeeId_courseId: { employeeId, courseId } },
-    })
-    if (existing) {
-      return NextResponse.json({ error: 'พนักงานนี้ถูกมอบหมายคอร์สนี้แล้ว' }, { status: 400 })
+    const data = []
+    for (const empId of employeeIds) {
+      for (const cId of courseIds) {
+        data.push({
+          employeeId: empId,
+          courseId: cId,
+          assignedBy: session.user.id,
+          dueDate: dueDate ? new Date(dueDate) : null,
+        })
+      }
     }
 
-    const assignment = await prisma.courseAssignment.create({
-      data: {
-        employeeId,
-        courseId,
-        assignedBy: session.user.id,
-        dueDate: dueDate ? new Date(dueDate) : null,
-      },
+    await prisma.courseAssignment.createMany({
+      data,
+      skipDuplicates: true,
     })
 
-    return NextResponse.json(assignment, { status: 201 })
+    return NextResponse.json({ success: true, count: data.length }, { status: 201 })
   } catch (error) {
     console.error('[API] Create assignment error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

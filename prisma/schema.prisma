@@ -27,6 +27,7 @@ enum TrainingType {
 enum CourseStatus {
   DRAFT
   PUBLISHED
+  COMPLETED
   ARCHIVED
 }
 
@@ -46,7 +47,9 @@ enum AssignmentStatus {
 
 enum RegistrationStatus {
   REGISTERED
+  WAITLISTED
   ATTENDED
+  CANCELLED
   NO_SHOW
 }
 
@@ -122,6 +125,7 @@ model Course {
   trainingType TrainingType
   passScore    Int          @default(80)
   isMandatory  Boolean      @default(false)
+  creditHours  Float        @default(0) // ชั่วโมงอบรม/เครดิต
   thumbnailUrl String?
   status        CourseStatus @default(DRAFT)
   createdAt    DateTime     @default(now())
@@ -133,6 +137,7 @@ model Course {
   assignments  CourseAssignment[]
   results      TrainingResult[]
   certificates Certificate[]
+  kpis         KpiCourse[]
 }
 
 model CourseStep {
@@ -251,14 +256,18 @@ model CourseAssignment {
 }
 
 model OfflineSession {
-  id           String   @id @default(cuid())
-  courseId    String
-  sessionDate DateTime
-  location     String   @default("")
-  capacity     Int      @default(30)
-  trainerName String   @default("")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  courseId            String
+  sessionDate         DateTime
+  sessionEndDate      DateTime?
+  registrationEndDate DateTime?
+  location            String   @default("")
+  capacity            Int      @default(30)
+  waitlistCapacity    Int      @default(0)
+  trainerName         String   @default("")
+  meetingUrl          String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   course        Course                @relation(fields: [courseId], references: [id], onDelete: Cascade)
   registrations OfflineRegistration[]
@@ -307,4 +316,29 @@ model Certificate {
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model Kpi {
+  id          String     @id @default(cuid())
+  code        String     // e.g. "KPI-2026-001"
+  name        String     // e.g. "ความปลอดภัยในการทำงาน"
+  target      String     @default("") // เป้าหมาย
+  year        Int        // e.g. 2026
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  courses     KpiCourse[]
+
+  @@unique([code, year])
+}
+
+model KpiCourse {
+  id        String @id @default(cuid())
+  kpiId     String
+  courseId  String
+
+  kpi       Kpi    @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+  course    Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([kpiId, courseId])
 }

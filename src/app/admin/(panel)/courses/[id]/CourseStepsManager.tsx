@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, PlayCircle, ClipboardCheck, FileText, Trash2, Save, X, UploadCloud, Settings, ArrowUp, ArrowDown } from 'lucide-react'
+import { Plus, PlayCircle, ClipboardCheck, FileText, Trash2, Save, X, UploadCloud, Settings, ArrowUp, ArrowDown, Pencil } from 'lucide-react'
 import { useModal } from '@/components/ModalProvider'
 
 interface StepData {
@@ -43,6 +43,18 @@ export default function CourseStepsManager({ courseId, initialSteps }: { courseI
   const [file, setFile] = useState<File | null>(null)
   const [uploadProgress, setUploadProgress] = useState(false)
   const [selectedStepType, setSelectedStepType] = useState('VIDEO')
+  const [isRequiredChecked, setIsRequiredChecked] = useState(true)
+
+  // Edit mode state
+  const [editingStep, setEditingStep] = useState<StepData | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editStepType, setEditStepType] = useState('VIDEO')
+  const [editIsRequired, setEditIsRequired] = useState(true)
+  const [editMinWatchPercent, setEditMinWatchPercent] = useState(95)
+  const [editUploadMode, setEditUploadMode] = useState<'url' | 'file'>('file')
+  const [editFile, setEditFile] = useState<File | null>(null)
+  const [editContentUrl, setEditContentUrl] = useState('')
+  const [editUploadProgress, setEditUploadProgress] = useState(false)
 
   const handleAddStep = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -70,12 +82,12 @@ export default function CourseStepsManager({ courseId, initialSteps }: { courseI
 
       const data = {
         courseId: courseId,
-        stepType: formData.get('stepType'),
+        stepType: selectedStepType,
         title: formData.get('title'),
         contentUrl: contentUrl || null,
         contentFilename: contentFilename || null,
-        isRequired: formData.get('isRequired') === 'true',
-        minWatchPercent: Number(formData.get('minWatchPercent')) || 95,
+        isRequired: isRequiredChecked,
+        minWatchPercent: selectedStepType === 'VIDEO' ? (Number(formData.get('minWatchPercent')) || 95) : 0,
         orderIndex: steps.length + 1,
       }
 
@@ -91,6 +103,8 @@ export default function CourseStepsManager({ courseId, initialSteps }: { courseI
         setShowForm(false)
         setFile(null)
         setUploadMode('file')
+        setIsRequiredChecked(true)
+        setSelectedStepType('VIDEO')
         router.refresh()
       }
     } catch (err) {
@@ -112,6 +126,80 @@ export default function CourseStepsManager({ courseId, initialSteps }: { courseI
       router.refresh()
     } catch (err) {
       console.error(err)
+    }
+  }
+
+  // ── Edit Step ──
+  const startEdit = (step: StepData) => {
+    setEditingStep(step)
+    setEditTitle(step.title)
+    setEditStepType(step.stepType)
+    setEditIsRequired(step.isRequired)
+    setEditMinWatchPercent(step.minWatchPercent)
+    setEditUploadMode(step.contentUrl && !step.contentFilename ? 'url' : 'file')
+    setEditContentUrl(step.contentUrl && !step.contentFilename ? step.contentUrl : '')
+    setEditFile(null)
+  }
+
+  const cancelEdit = () => {
+    setEditingStep(null)
+    setEditFile(null)
+    setEditContentUrl('')
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingStep) return
+    setLoading(true)
+
+    let finalContentUrl = editingStep.contentUrl
+    let finalContentFilename = editingStep.contentFilename
+
+    try {
+      if (editUploadMode === 'file' && editFile) {
+        setEditUploadProgress(true)
+        const fileData = new FormData()
+        fileData.append('file', editFile)
+        const uploadRes = await fetch(`/api/admin/courses/${courseId}/upload`, {
+          method: 'POST',
+          body: fileData
+        })
+        const uploadData = await uploadRes.json()
+        if (!uploadRes.ok) throw new Error(uploadData.error || 'Upload failed')
+        finalContentUrl = uploadData.url
+        finalContentFilename = uploadData.filename
+        setEditUploadProgress(false)
+      } else if (editUploadMode === 'url' && editContentUrl !== editingStep.contentUrl) {
+        finalContentUrl = editContentUrl
+        finalContentFilename = null
+      }
+
+      const res = await fetch(`/api/admin/courses/${courseId}/steps/${editingStep.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editTitle,
+          stepType: editStepType,
+          isRequired: editIsRequired,
+          minWatchPercent: editStepType === 'VIDEO' ? editMinWatchPercent : 0,
+          contentUrl: finalContentUrl,
+          contentFilename: finalContentFilename,
+        }),
+      })
+
+      if (res.ok) {
+        const updated = await res.json()
+        setSteps(steps.map(s => s.id === editingStep.id ? { ...s, title: updated.title, stepType: updated.stepType, isRequired: updated.isRequired, minWatchPercent: updated.minWatchPercent } : s))
+        setEditingStep(null)
+        router.refresh()
+      } else {
+        const errData = await res.json()
+        showAlert({ message: errData.error || 'บันทึกไม่สำเร็จ', type: 'danger' })
+      }
+    } catch (err) {
+      console.error(err)
+      showAlert({ message: 'เกิดข้อผิดพลาด', type: 'danger' })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -138,10 +226,8 @@ export default function CourseStepsManager({ courseId, initialSteps }: { courseI
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items })
       })
-      router.refresh()
     } catch (err) {
       console.error(err)
-      showAlert({ message: 'เกิดข้อผิดพลาดในการจัดเรียง', type: 'danger' })
     }
   }
 
@@ -154,6 +240,122 @@ export default function CourseStepsManager({ courseId, initialSteps }: { courseI
         <div className="space-y-2">
           {steps.map((step, i) => {
             const Icon = stepIcons[step.stepType] || FileText
+            const isEditing = editingStep?.id === step.id
+
+            if (isEditing) {
+              // ── Inline Edit Form ──
+              return (
+                <div key={step.id} className="p-4 rounded-xl border-2 border-primary/50 bg-primary/5 space-y-3 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-sm text-primary">แก้ไขขั้นตอนที่ {i + 1}</h4>
+                    <button onClick={cancelEdit} className="p-1 hover:bg-gray-100 rounded-lg">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-[var(--color-text)] mb-1">ประเภท</label>
+                      <select 
+                        className="input-field py-2 text-sm" 
+                        value={editStepType}
+                        onChange={(e) => setEditStepType(e.target.value)}
+                      >
+                        <option value="VIDEO">วิดีโอ</option>
+                        <option value="QUIZ">แบบทดสอบ</option>
+                        <option value="PRETEST">Pre-test</option>
+                        <option value="POSTTEST">Post-test</option>
+                        <option value="DOCUMENT">เอกสาร</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-[var(--color-text)] mb-1">ชื่อ</label>
+                      <input 
+                        className="input-field py-2 text-sm" 
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        required
+                      />
+                    </div>
+                    {editStepType === 'VIDEO' && (
+                      <div>
+                        <label className="block text-xs font-medium text-[var(--color-text)] mb-1">% ขั้นต่ำที่ต้องดู</label>
+                        <input 
+                          type="number" 
+                          className="input-field py-2 text-sm" 
+                          value={editMinWatchPercent}
+                          onChange={(e) => setEditMinWatchPercent(Number(e.target.value))}
+                          min={0} max={100}
+                        />
+                      </div>
+                    )}
+                    {(editStepType === 'VIDEO' || editStepType === 'DOCUMENT') && (
+                      <div className="md:col-span-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-medium text-[var(--color-text)]">
+                            เปลี่ยนเนื้อหา {editingStep?.contentFilename && <span className="text-gray-400 font-normal">(ปัจจุบัน: {editingStep.contentFilename})</span>}
+                          </label>
+                          <div className="flex bg-gray-100 rounded-lg p-0.5">
+                            <button 
+                              type="button" 
+                              onClick={() => setEditUploadMode('file')}
+                              className={`px-2 py-0.5 text-[10px] rounded-md transition-colors ${editUploadMode === 'file' ? 'bg-white shadow-sm font-medium text-gray-800' : 'text-gray-500'}`}
+                            >
+                              ไฟล์
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={() => setEditUploadMode('url')}
+                              className={`px-2 py-0.5 text-[10px] rounded-md transition-colors ${editUploadMode === 'url' ? 'bg-white shadow-sm font-medium text-gray-800' : 'text-gray-500'}`}
+                            >
+                              URL
+                            </button>
+                          </div>
+                        </div>
+                        {editUploadMode === 'url' ? (
+                          <input 
+                            className="input-field py-2 text-sm" 
+                            placeholder="https://..."
+                            value={editContentUrl}
+                            onChange={(e) => setEditContentUrl(e.target.value)}
+                          />
+                        ) : (
+                          <div className="relative">
+                            <input 
+                              type="file" 
+                              onChange={(e) => setEditFile(e.target.files?.[0] || null)}
+                              className="block w-full text-sm text-[var(--color-text-secondary)] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer border border-[var(--color-border)] rounded-xl" 
+                            />
+                            {editUploadProgress && <div className="absolute right-3 top-2.5 text-xs text-primary animate-pulse font-medium">กำลังอัปโหลด...</div>}
+                          </div>
+                        )}
+                        {!editFile && editUploadMode === 'file' && editingStep?.contentFilename && (
+                          <p className="text-xs text-gray-400 mt-1">ไม่เลือกไฟล์ = ใช้ไฟล์เดิม</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input 
+                        type="checkbox" 
+                        checked={editIsRequired}
+                        onChange={(e) => setEditIsRequired(e.target.checked)}
+                        className="rounded"
+                      />
+                      <span className="text-[var(--color-text)]">จำเป็นต้องทำ (ล็อกไม่ให้ข้ามจนกว่าจะผ่าน)</span>
+                    </label>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button onClick={cancelEdit} className="btn-secondary py-1.5 px-3 text-sm">ยกเลิก</button>
+                    <button onClick={handleSaveEdit} disabled={loading} className="btn-primary py-1.5 px-3 text-sm">
+                      {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Save className="w-4 h-4" /> บันทึก</>}
+                    </button>
+                  </div>
+                </div>
+              )
+            }
+
+            // ── Normal Step Row ──
             return (
               <div key={step.id} className="flex items-center gap-3 p-3 rounded-xl border border-[var(--color-border)] hover:bg-[var(--color-surface-alt)] transition-colors group">
                 <div className="flex flex-col items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -216,6 +418,13 @@ export default function CourseStepsManager({ courseId, initialSteps }: { courseI
                   )
                 )}
                 <button
+                  onClick={() => startEdit(step)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 opacity-0 group-hover:opacity-100 transition-all"
+                  title="แก้ไขขั้นตอน"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
                   onClick={() => handleDeleteStep(step.id)}
                   className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
                   title="ลบขั้นตอน"
@@ -258,39 +467,45 @@ export default function CourseStepsManager({ courseId, initialSteps }: { courseI
               <label className="block text-xs font-medium text-[var(--color-text)] mb-1">ชื่อ</label>
               <input name="title" className="input-field py-2 text-sm" placeholder="เช่น วิดีโอ: บทที่ 1" required />
             </div>
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-medium text-[var(--color-text)]">เนื้อหา</label>
-                <div className="flex bg-gray-100 rounded-lg p-0.5">
-                  <button 
-                    type="button" 
-                    onClick={() => setUploadMode('file')}
-                    className={`px-2 py-0.5 text-[10px] rounded-md transition-colors ${uploadMode === 'file' ? 'bg-white shadow-sm font-medium text-gray-800' : 'text-gray-500'}`}
-                  >
-                    ไฟล์
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => setUploadMode('url')}
-                    className={`px-2 py-0.5 text-[10px] rounded-md transition-colors ${uploadMode === 'url' ? 'bg-white shadow-sm font-medium text-gray-800' : 'text-gray-500'}`}
-                  >
-                    URL
-                  </button>
+            {(selectedStepType === 'VIDEO' || selectedStepType === 'DOCUMENT') ? (
+              <div className="md:col-span-2">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-medium text-[var(--color-text)]">เนื้อหา</label>
+                  <div className="flex bg-gray-100 rounded-lg p-0.5">
+                    <button 
+                      type="button" 
+                      onClick={() => setUploadMode('file')}
+                      className={`px-2 py-0.5 text-[10px] rounded-md transition-colors ${uploadMode === 'file' ? 'bg-white shadow-sm font-medium text-gray-800' : 'text-gray-500'}`}
+                    >
+                      ไฟล์
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setUploadMode('url')}
+                      className={`px-2 py-0.5 text-[10px] rounded-md transition-colors ${uploadMode === 'url' ? 'bg-white shadow-sm font-medium text-gray-800' : 'text-gray-500'}`}
+                    >
+                      URL
+                    </button>
+                  </div>
                 </div>
+                {uploadMode === 'url' ? (
+                  <input name="contentUrl" className="input-field py-2 text-sm" placeholder="https://..." />
+                ) : (
+                  <div className="relative">
+                    <input 
+                      type="file" 
+                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                      className="block w-full text-sm text-[var(--color-text-secondary)] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer border border-[var(--color-border)] rounded-xl" 
+                    />
+                    {uploadProgress && <div className="absolute right-3 top-2.5 text-xs text-primary animate-pulse font-medium">กำลังอัปโหลด...</div>}
+                  </div>
+                )}
               </div>
-              {uploadMode === 'url' ? (
-                <input name="contentUrl" className="input-field py-2 text-sm" placeholder="https://..." />
-              ) : (
-                <div className="relative">
-                  <input 
-                    type="file" 
-                    onChange={(e) => setFile(e.target.files?.[0] || null)}
-                    className="block w-full text-sm text-[var(--color-text-secondary)] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer border border-[var(--color-border)] rounded-xl" 
-                  />
-                  {uploadProgress && <div className="absolute right-3 top-2.5 text-xs text-primary animate-pulse font-medium">กำลังอัปโหลด...</div>}
-                </div>
-              )}
-            </div>
+            ) : (
+              <div className="md:col-span-2 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                <p className="text-sm text-blue-700">💡 การตั้งค่าคำถามและ % คะแนนสอบผ่าน (Pass Score) สำหรับแบบทดสอบ จะทำในขั้นตอนถัดไป และคะแนนสอบผ่านจะอิงจาก <strong className="font-semibold">"ตั้งค่าคอร์ส"</strong></p>
+              </div>
+            )}
             {selectedStepType === 'VIDEO' && (
               <div>
                 <label className="block text-xs font-medium text-[var(--color-text)] mb-1">% ขั้นต่ำที่ต้องดู</label>
@@ -300,9 +515,13 @@ export default function CourseStepsManager({ courseId, initialSteps }: { courseI
           </div>
           <div>
             <label className="flex items-center gap-2 text-sm">
-              <input type="hidden" name="isRequired" value="false" />
-              <input type="checkbox" name="isRequired" value="true" defaultChecked className="rounded" />
-              <span className="text-[var(--color-text)]">จำเป็นต้องทำ</span>
+              <input 
+                type="checkbox" 
+                checked={isRequiredChecked}
+                onChange={(e) => setIsRequiredChecked(e.target.checked)}
+                className="rounded"
+              />
+              <span className="text-[var(--color-text)]">จำเป็นต้องทำ (ล็อกไม่ให้ข้ามจนกว่าจะผ่าน)</span>
             </label>
           </div>
           <div className="flex justify-end gap-2">
@@ -313,7 +532,7 @@ export default function CourseStepsManager({ courseId, initialSteps }: { courseI
           </div>
         </form>
       ) : (
-        <button onClick={() => setShowForm(true)} className="w-full p-3 rounded-xl border-2 border-dashed border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2 text-sm">
+        <button onClick={() => { setShowForm(true); setEditingStep(null) }} className="w-full p-3 rounded-xl border-2 border-dashed border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2 text-sm">
           <Plus className="w-4 h-4" />
           เพิ่มขั้นตอน
         </button>

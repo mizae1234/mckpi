@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { authMiddleware } from '@/lib/auth-edge'
+import { auth } from '@/lib/auth'
 import { evaluateCourseCompletion } from '@/lib/course-eval'
 
-export const POST = authMiddleware(async (request: NextRequest) => {
+export async function POST(request: NextRequest) {
   try {
-    const session = await (request as any).auth()
-    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await auth()
+    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const employeeId = session.user.id
     const body = await request.json()
@@ -42,8 +42,8 @@ export const POST = authMiddleware(async (request: NextRequest) => {
     }
 
     return NextResponse.json(progress)
-  } catch (error) {
+  } catch (error: any) {
     console.error('[API] Progress update error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })
   }
-}) as any
+}

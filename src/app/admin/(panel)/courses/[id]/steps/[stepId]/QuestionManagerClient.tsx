@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { Plus, Save, Trash2, Edit2, CheckCircle2, AlertCircle, X, Library, Search, FolderOpen, ArrowLeft } from 'lucide-react'
 import { useModal } from '@/components/ModalProvider'
@@ -335,8 +336,7 @@ export default function QuestionManagerClient({ courseId, stepId, initialQuestio
       </div>
 
       {/* ─── Bank Selection Modal ─── */}
-      {showBankModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowBankModal(false)}>
+      {showBankModal && createPortal(<div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowBankModal(false)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col m-4" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
@@ -465,8 +465,7 @@ export default function QuestionManagerClient({ courseId, stepId, initialQuestio
               </div>
             )}
           </div>
-        </div>
-      )}
+        </div>, document.body)}
     </div>
   )
 }

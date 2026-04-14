@@ -2,6 +2,8 @@ import { prisma } from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import CoursePlayer from './CoursePlayer'
+import CourseRegistration from './CourseRegistration'
+import ClassroomCourseViewer from './ClassroomCourseViewer'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,14 +14,10 @@ export default async function LearningCourseDetailPage({ params }: { params: Pro
 
   const employeeId = session.user.id
 
-  // 1. Check if employee is assigned to this course
-  const assignment = await prisma.courseAssignment.findFirst({
-    where: { employeeId: employeeId, courseId: id },
+  // 1. Check if employee has registered (started) this online course
+  const trainingResult = await prisma.trainingResult.findFirst({
+    where: { employeeId: employeeId, courseId: id, source: 'ONLINE' }
   })
-
-  // If not assigned explicitly but might be offline/external, we can allow or block. Let's allow for now if it exists, or strict check?
-  // Let's stick to strict assignment for ONLINE learning to track properly.
-  // Actually, if they try to access an ONLINE course, let's create assignment if open, else block. Let's assume assigned.
   
   const course = await prisma.course.findUnique({
     where: { id },
@@ -27,11 +25,28 @@ export default async function LearningCourseDetailPage({ params }: { params: Pro
       steps: {
         orderBy: { orderIndex: 'asc' },
         include: { questions: { orderBy: { orderNum: 'asc' } } }
+      },
+      sessions: {
+        where: { sessionEndDate: { gte: new Date(new Date().setHours(0, 0, 0, 0)) } }, // Only show upcoming or today's sessions
+        orderBy: { sessionDate: 'asc' },
+        include: { _count: { select: { registrations: { where: { status: { not: 'CANCELLED' } } } } } }
       }
     }
   })
 
   if (!course) return notFound()
+
+  if (course.trainingType === 'OFFLINE') {
+    const registrations = await prisma.offlineRegistration.findMany({
+      where: { employeeId, courseId: id }
+    })
+    return <ClassroomCourseViewer course={course} sessions={course.sessions} myRegistrations={registrations} />
+  }
+
+  // If not registered, show Registration UI
+  if (!trainingResult) {
+    return <CourseRegistration course={course} />
+  }
 
   // 2. Fetch Progress & Attempts
   const progresses = await prisma.stepProgress.findMany({
@@ -94,6 +109,9 @@ export default async function LearningCourseDetailPage({ params }: { params: Pro
       allPreviousReqCompleted = false
     }
 
+    const stepAttempts = attempts.filter(a => a.stepId === step.id)
+    const latestAttemptScore = stepAttempts.length > 0 ? stepAttempts[0].score : null
+    
     return {
       id: step.id,
       stepType: step.stepType,
@@ -104,12 +122,21 @@ export default async function LearningCourseDetailPage({ params }: { params: Pro
       watchPercent: progressMap.get(step.id)?.watchPercent || 0,
       is_unlocked: isUnlocked,
       is_skipped: isSkipped,
-      questions: step.questions.map(q => ({
-        id: q.id,
-        questionText: q.questionText,
-        options: q.options as string[],
-        // Do NOT send correctAnswer to client!
-      }))
+      latestAttemptScore,
+      questions: step.questions.map(q => {
+        let parsedOptions: string[] = []
+        try {
+          parsedOptions = typeof q.options === 'string' ? JSON.parse(q.options) : (Array.isArray(q.options) ? q.options : [])
+        } catch (e) {
+          parsedOptions = []
+        }
+        return {
+          id: q.id,
+          questionText: q.questionText,
+          options: parsedOptions,
+          // Do NOT send correctAnswer to client!
+        }
+      })
     }
   })
 

@@ -8,7 +8,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { status, title, description, trainingType, passScore, isMandatory } = body
+    const { status, title, description, trainingType, passScore, creditHours, isMandatory, kpiIds } = body
 
     const dataToUpdate: any = {}
     if (status !== undefined) dataToUpdate.status = status
@@ -16,12 +16,24 @@ export async function PUT(
     if (description !== undefined) dataToUpdate.description = description === '' ? null : description
     if (trainingType !== undefined) dataToUpdate.trainingType = trainingType
     if (passScore !== undefined) dataToUpdate.passScore = passScore
+    if (creditHours !== undefined) dataToUpdate.creditHours = creditHours
     if (isMandatory !== undefined) dataToUpdate.isMandatory = isMandatory
 
     const updatedCourse = await prisma.course.update({
       where: { id },
       data: dataToUpdate,
     })
+
+    // Sync KPI mappings if provided
+    if (kpiIds !== undefined && Array.isArray(kpiIds)) {
+      await prisma.kpiCourse.deleteMany({ where: { courseId: id } })
+      if (kpiIds.length > 0) {
+        await prisma.kpiCourse.createMany({
+          data: kpiIds.map((kpiId: string) => ({ kpiId, courseId: id })),
+          skipDuplicates: true,
+        })
+      }
+    }
 
     return NextResponse.json(updatedCourse, { status: 200 })
   } catch (error) {

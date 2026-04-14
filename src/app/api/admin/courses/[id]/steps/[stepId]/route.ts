@@ -4,6 +4,40 @@ import { deleteFromR2, getR2KeyFromUrl } from '@/lib/r2'
 
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || ''
 
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; stepId: string }> }
+) {
+  try {
+    const { stepId } = await params
+    const body = await request.json()
+    const { title, stepType, isRequired, minWatchPercent, contentUrl, contentFilename } = body
+
+    const existing = await prisma.courseStep.findUnique({ where: { id: stepId } })
+    if (!existing) {
+      return NextResponse.json({ error: 'ไม่พบขั้นตอน' }, { status: 404 })
+    }
+
+    const updated = await prisma.courseStep.update({
+      where: { id: stepId },
+      data: {
+        ...(title !== undefined && { title }),
+        ...(stepType !== undefined && { stepType }),
+        ...(isRequired !== undefined && { isRequired }),
+        ...(minWatchPercent !== undefined && { minWatchPercent }),
+        ...(contentUrl !== undefined && { contentUrl }),
+        ...(contentFilename !== undefined && { contentFilename }),
+      },
+      include: { _count: { select: { questions: true } } },
+    })
+
+    return NextResponse.json(updated)
+  } catch (error) {
+    console.error('[API] Update step error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string; stepId: string }> }

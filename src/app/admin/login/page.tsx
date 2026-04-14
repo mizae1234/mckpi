@@ -60,7 +60,7 @@ export default function AdminLoginPage() {
               <input
                 type="text"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => setUsername(e.target.value.toLowerCase())}
                 className="input-field"
                 placeholder="admin"
                 required

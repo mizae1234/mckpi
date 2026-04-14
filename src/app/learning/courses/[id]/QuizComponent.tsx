@@ -54,9 +54,19 @@ export default function QuizComponent({ step, courseId, passScore, onComplete }:
 
   if (step.is_completed && !result) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-white">
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-white animate-fade-in">
         <CheckCircle2 className="w-20 h-20 text-green-500 mb-4" />
         <h3 className="text-xl font-bold text-[var(--color-text)]">คุณทำแบบทดสอบนี้ผ่านเรียบร้อยแล้ว</h3>
+        
+        {step.latestAttemptScore !== null && step.latestAttemptScore !== undefined && (
+          <div className="my-6">
+            <p className="text-sm text-[var(--color-text-secondary)] mb-2">คะแนนล่าสุดของคุณ</p>
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gray-50 border-4 shadow-inner text-3xl font-bold text-primary border-[var(--color-primary)]">
+              {step.latestAttemptScore}%
+            </div>
+          </div>
+        )}
+
         <p className="text-[var(--color-text-secondary)] mt-2">โปรดไปศึกษาขั้นตอนถัดไปที่แถบเมนูด้านขวา</p>
       </div>
     )
@@ -99,11 +109,16 @@ export default function QuizComponent({ step, courseId, passScore, onComplete }:
             <p className="text-sm text-[var(--color-text-secondary)]">ทั้งหมด {step.questions.length} ข้อ</p>
           </div>
 
-          {step.questions.map((q: any, i: number) => (
+          {step.questions.map((q: any, i: number) => {
+            const optionsList = Array.isArray(q.options) 
+              ? q.options 
+              : (typeof q.options === 'string' ? (()=>{ try{ return JSON.parse(q.options)}catch{return []} })() : [])
+            
+            return (
             <div key={q.id} className="p-6 rounded-2xl border border-[var(--color-border)] bg-gray-50/50 space-y-4">
               <h4 className="font-medium text-[var(--color-text)]">ข้อที่ {i + 1}. {q.questionText}</h4>
               <div className="space-y-3">
-                {q.options.map((opt: string, optIndex: number) => (
+                {optionsList.map((opt: string, optIndex: number) => (
                   <label 
                     key={optIndex} 
                     className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
@@ -124,7 +139,7 @@ export default function QuizComponent({ step, courseId, passScore, onComplete }:
                 ))}
               </div>
             </div>
-          ))}
+          )})}
 
           {warning && (
             <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium animate-fade-in">

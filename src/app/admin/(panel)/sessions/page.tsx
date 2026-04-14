@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
-import { CalendarCheck, Plus } from 'lucide-react'
+import { CalendarCheck } from 'lucide-react'
+import CreateSessionButton from './CreateSessionButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,10 +20,7 @@ export default async function SessionsPage() {
           <h1 className="text-2xl font-bold text-[var(--color-text)]">รอบอบรม Offline</h1>
           <p className="text-sm text-[var(--color-text-secondary)]">จัดการรอบการอบรมในห้องเรียน</p>
         </div>
-        <button className="btn-primary">
-          <Plus className="w-5 h-5" />
-          สร้างรอบอบรม
-        </button>
+        <CreateSessionButton />
       </div>
 
       <div className="table-container">

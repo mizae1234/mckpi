@@ -3,31 +3,86 @@
 import { useState, useRef, useEffect } from 'react'
 import { CheckCircle2 } from 'lucide-react'
 
-// Simple mock for R2 video or actual mp4. If youtube, we'd need iframe logic.
-// For MKPI, contentUrl points to R2 bucket.
-
-export default function VideoPlayerComponent({ step, courseId, onComplete }: { step: any, courseId: string, onComplete: () => void }) {
+export default function VideoPlayerComponent({ step, courseId, onComplete, onProgress }: { step: any, courseId: string, onComplete: () => void, onProgress?: (stepId: string, percent: number) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [percent, setPercent] = useState(step.watchPercent || 0)
   const [isUpdating, setIsUpdating] = useState(false)
   
-  // To avoid spamming API
   const lastUpdatedPercent = useRef(percent)
+  // The farthest point the user has legitimately watched to (by playing, not seeking)
+  const maxTimeWatchedRef = useRef(0)
+  // The last known currentTime from the previous timeupdate tick
+  const lastTimeRef = useRef(0)
+  const isSnappingBack = useRef(false)
 
-  const handleTimeUpdate = () => {
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || step.is_completed) return
+
+    const onSeeking = () => {
+      if (isSnappingBack.current) return
+      if (video.currentTime > maxTimeWatchedRef.current + 2) {
+        isSnappingBack.current = true
+        video.currentTime = maxTimeWatchedRef.current
+        setTimeout(() => { isSnappingBack.current = false }, 200)
+      }
+    }
+
+    const onTimeUpdate = () => {
+      if (isSnappingBack.current) return
+
+      const current = video.currentTime
+      const last = lastTimeRef.current
+      
+      // Only advance maxTimeWatched if the jump is small (normal playback, not a seek)
+      // Normal playback advances ~0.25s per timeupdate tick. A jump > 3s means a seek.
+      const delta = current - last
+      if (delta > 0 && delta < 3) {
+        // This is normal playback progression
+        if (current > maxTimeWatchedRef.current) {
+          maxTimeWatchedRef.current = current
+        }
+      }
+      // If delta is negative (rewinding) or very large (seeking), don't update max
+      
+      lastTimeRef.current = current
+    }
+
+    video.addEventListener('seeking', onSeeking)
+    video.addEventListener('timeupdate', onTimeUpdate)
+    return () => {
+      video.removeEventListener('seeking', onSeeking)
+      video.removeEventListener('timeupdate', onTimeUpdate)
+    }
+  }, [step.is_completed])
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current && step.watchPercent) {
+      const initialMaxTime = (step.watchPercent / 100) * videoRef.current.duration
+      maxTimeWatchedRef.current = initialMaxTime
+      lastTimeRef.current = initialMaxTime
+      if (initialMaxTime > 0 && !step.is_completed) {
+        isSnappingBack.current = true
+        videoRef.current.currentTime = initialMaxTime
+        setTimeout(() => { isSnappingBack.current = false }, 300)
+      }
+    }
+  }
+
+  // React onTimeUpdate for progress saving (separate from the DOM listener for seek protection)
+  const handleTimeUpdateForProgress = () => {
     if (!videoRef.current || step.is_completed || isUpdating) return
     
-    // Prevent skipping forward roughly (simple check, not foolproof without server streaming)
     const currentPercent = Math.floor((videoRef.current.currentTime / videoRef.current.duration) * 100)
     
     if (currentPercent > percent && currentPercent > lastUpdatedPercent.current + 5) {
-      // Update progress every 5%
       updateProgress(currentPercent)
     }
   }
 
   const handleEnded = () => {
     if (!step.is_completed) {
+      maxTimeWatchedRef.current = videoRef.current?.duration || 0
       updateProgress(100)
     }
   }
@@ -48,6 +103,7 @@ export default function VideoPlayerComponent({ step, courseId, onComplete }: { s
       if (res.ok) {
         lastUpdatedPercent.current = newPercent
         setPercent(newPercent)
+        onProgress?.(step.id, newPercent)
         
         if (newPercent >= step.minWatchPercent && !step.is_completed) {
           onComplete()
@@ -61,15 +117,17 @@ export default function VideoPlayerComponent({ step, courseId, onComplete }: { s
   }
 
   return (
-    <div className="flex flex-col h-full bg-black">
+    <div className="flex flex-col h-full bg-black relative">
       {step.contentUrl ? (
         <video 
           ref={videoRef}
           src={step.contentUrl} 
           controls 
-          controlsList="nodownload"
+          controlsList="nodownload noplaybackrate"
+          disablePictureInPicture
           className="w-full h-full object-contain"
-          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
+          onTimeUpdate={handleTimeUpdateForProgress}
           onEnded={handleEnded}
         />
       ) : (
