@@ -36,6 +36,7 @@ export default async function CoursesPage() {
     status: course.status,
     isMandatory: course.isMandatory,
     assignmentCount: course._count.assignments,
+    learnerCount: course._count.results,
     sessions: course.sessions // Include nested offline sessions
   }))
 

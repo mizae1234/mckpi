@@ -9,9 +9,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { id: courseId } = await params
-    const { employeeId, sessionId, status } = await request.json()
+    const { employeeIds, sessionId, status } = await request.json()
 
-    if (!employeeId) {
+    if (!employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) {
       return NextResponse.json({ error: 'กรุณาเลือกพนักงาน' }, { status: 400 })
     }
 
@@ -24,60 +24,72 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         return NextResponse.json({ error: 'กรุณาเลือกรอบอบรม' }, { status: 400 })
       }
 
-      // Check if already registered
-      const existing = await prisma.offlineRegistration.findFirst({
-        where: { employeeId, sessionId, status: { not: 'CANCELLED' } }
+      // Check existing registrations for this session
+      const existing = await prisma.offlineRegistration.findMany({
+        where: { employeeId: { in: employeeIds }, sessionId, status: { not: 'CANCELLED' } },
+        select: { employeeId: true }
       })
-      if (existing) {
-        return NextResponse.json({ error: 'พนักงานลงทะเบียนรอบนี้แล้ว' }, { status: 400 })
+      const existingIds = new Set(existing.map(e => e.employeeId))
+      const newEmployeeIds = employeeIds.filter(id => !existingIds.has(id))
+
+      if (newEmployeeIds.length > 0) {
+        // Bulk Insert Offline Registration
+        await prisma.offlineRegistration.createMany({
+          data: newEmployeeIds.map(empId => ({
+            employeeId: empId,
+            sessionId,
+            status: status || 'REGISTERED',
+          })),
+          skipDuplicates: true
+        })
+
+        // Bulk Insert or Update TrainingResult (IN_PROGRESS)
+        // Since Prisma doesn't support bulk upsert easily, we fetch existing ones and create missing
+        const existingResults = await prisma.trainingResult.findMany({
+          where: { employeeId: { in: newEmployeeIds }, courseId, source: 'OFFLINE' },
+          select: { employeeId: true }
+        })
+        const resultIds = new Set(existingResults.map(e => e.employeeId))
+        const missingResultIds = newEmployeeIds.filter(id => !resultIds.has(id))
+
+        if (missingResultIds.length > 0) {
+          await prisma.trainingResult.createMany({
+            data: missingResultIds.map(empId => ({
+              employeeId: empId,
+              courseId,
+              source: 'OFFLINE',
+              status: 'IN_PROGRESS'
+            })),
+            skipDuplicates: true
+          })
+        }
       }
 
-      const registration = await prisma.offlineRegistration.create({
-        data: {
-          employeeId,
-          sessionId,
-          status: status || 'REGISTERED',
-        },
-        include: {
-          employee: {
-            select: { id: true, employeeCode: true, fullName: true, branchCode: true, departmentCode: true }
-          }
-        }
-      })
-
-      // Ensure TrainingResult exists
-      await prisma.trainingResult.upsert({
-        where: { employeeId_courseId_source: { employeeId, courseId, source: 'OFFLINE' } },
-        update: {},
-        create: { employeeId, courseId, source: 'OFFLINE', status: 'IN_PROGRESS' }
-      })
-
-      return NextResponse.json(registration, { status: 201 })
+      return NextResponse.json({ success: true, addedCount: newEmployeeIds.length }, { status: 201 })
 
     } else {
       // Online/External: Create TrainingResult directly
-      const existing = await prisma.trainingResult.findFirst({
-        where: { employeeId, courseId }
+      const sourceVal = course.trainingType === 'EXTERNAL' ? 'EXTERNAL' : 'ONLINE'
+      const existing = await prisma.trainingResult.findMany({
+        where: { employeeId: { in: employeeIds }, courseId, source: sourceVal },
+        select: { employeeId: true }
       })
-      if (existing) {
-        return NextResponse.json({ error: 'พนักงานลงทะเบียนหลักสูตรนี้แล้ว' }, { status: 400 })
+      const existingIds = new Set(existing.map(e => e.employeeId))
+      const newEmployeeIds = employeeIds.filter(id => !existingIds.has(id))
+
+      if (newEmployeeIds.length > 0) {
+        await prisma.trainingResult.createMany({
+          data: newEmployeeIds.map(empId => ({
+            employeeId: empId,
+            courseId,
+            source: sourceVal,
+            status: status || 'IN_PROGRESS',
+          })),
+          skipDuplicates: true
+        })
       }
 
-      const result = await prisma.trainingResult.create({
-        data: {
-          employeeId,
-          courseId,
-          source: course.trainingType === 'EXTERNAL' ? 'EXTERNAL' : 'ONLINE',
-          status: status || 'IN_PROGRESS',
-        },
-        include: {
-          employee: {
-            select: { id: true, employeeCode: true, fullName: true, branchCode: true, departmentCode: true }
-          }
-        }
-      })
-
-      return NextResponse.json(result, { status: 201 })
+      return NextResponse.json({ success: true, addedCount: newEmployeeIds.length }, { status: 201 })
     }
   } catch (error: any) {
     console.error('[API] Admin add trainee error:', error)

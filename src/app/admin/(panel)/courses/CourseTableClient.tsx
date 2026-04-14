@@ -110,7 +110,7 @@ export default function CourseTableClient({ courses }: { courses: any[] }) {
 
                 return (
                   <React.Fragment key={course.id}>
-                    <tr className={`hover:bg-gray-50 transition-colors ${isExpanded ? 'bg-blue-50/30' : ''}`}>
+                    <tr className={`group hover:bg-gray-50 transition-colors ${isExpanded ? 'bg-blue-50/30' : ''}`}>
                       <td className="text-center cursor-pointer" onClick={(e) => hasSessions && toggleRow(course.id, e)}>
                         {hasSessions ? (
                           <div className="p-1 rounded hover:bg-gray-200 inline-flex transition-colors">
@@ -141,12 +141,18 @@ export default function CourseTableClient({ courses }: { courses: any[] }) {
                           )}
                         </div>
                       </td>
-                      <td className="text-sm font-medium">
-                        {course.assignmentCount} <span className="text-xs text-gray-500 font-normal">คน</span>
+                      <td className="text-sm">
+                        <div className="font-semibold text-primary">
+                          {course.learnerCount} <span className="text-xs text-gray-500 font-normal">คน</span>
+                        </div>
+                        {course.assignmentCount > 0 && (
+                          <div className="text-[10px] text-gray-400 mt-0.5">
+                            (จาก {course.assignmentCount} มอบหมาย)
+                          </div>
+                        )}
                       </td>
                       <td>
                         <div className="flex items-center justify-end gap-2 relative">
-                          <DeleteCourseButton courseId={course.id} courseTitle={course.title} />
                           <button
                             onClick={(e) => {
                               e.preventDefault()
@@ -175,6 +181,8 @@ export default function CourseTableClient({ courses }: { courses: any[] }) {
                                   <Users className="w-4 h-4" />
                                   จัดการผู้เข้าอบรม
                                 </Link>
+                                <div className="h-px bg-gray-100 my-1"></div>
+                                <DeleteCourseButton courseId={course.id} courseTitle={course.title} />
                               </div>
                             </div>
                           )}

@@ -65,10 +65,41 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const searchParams = request.nextUrl.searchParams
+    const q = searchParams.get('q')
+    const depsParam = searchParams.get('departments')
+
+    if (depsParam) {
+      const deps = depsParam.split(',').map(d => d.trim()).filter(Boolean)
+      if (deps.length > 0) {
+        const employees = await prisma.employee.findMany({
+          where: { departmentCode: { in: deps } },
+          orderBy: { employeeCode: 'asc' }
+        })
+        return NextResponse.json(employees)
+      }
+    }
+
+    // ถ้าไม่มีคำค้นหา ส่งคืนอาร์เรย์ว่างเปล่าเพื่อหลีกเลี่ยงการโหลดแบบหว่านแห 3000 คน
+    if (!q || q.trim() === '') {
+      return NextResponse.json([])
+    }
+
+    const keyword = q.trim()
     const employees = await prisma.employee.findMany({
+      where: {
+        OR: [
+          { employeeCode: { contains: keyword, mode: 'insensitive' } },
+          { fullName: { contains: keyword, mode: 'insensitive' } },
+          { departmentCode: { contains: keyword, mode: 'insensitive' } },
+          { branchCode: { contains: keyword, mode: 'insensitive' } },
+          { positionCode: { contains: keyword, mode: 'insensitive' } },
+        ]
+      },
       orderBy: { employeeCode: 'asc' },
+      take: 100 // Limit results for sanity
     })
     return NextResponse.json(employees)
   } catch (error) {

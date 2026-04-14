@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Calendar, MapPin, User, Users, Clock, CheckCircle2, XCircle, AlertTriangle, Search, BookOpen, Plus, X } from 'lucide-react'
+import { Calendar, MapPin, User, Users, Clock, CheckCircle2, XCircle, AlertTriangle, Search, BookOpen, Plus, X, CheckSquare, Square } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface Employee {
@@ -16,6 +16,7 @@ interface Employee {
 interface Registration {
   id: string
   status: string
+  score?: number | null
   registeredAt: string
   employee: Employee
 }
@@ -68,7 +69,7 @@ const resultStatusLabels: Record<string, string> = {
   FAILED: 'ไม่ผ่าน',
 }
 
-// ─── ADD TRAINEE MODAL ──────────────────────────────
+// ─── ADD TRAINEE MODAL (BULK) ──────────────────────────────
 function AddTraineeModal({ 
   courseId, trainingType, sessionId, onClose, onAdded 
 }: { 
@@ -80,33 +81,67 @@ function AddTraineeModal({
 }) {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [adding, setAdding] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    fetch('/api/admin/employees')
-      .then(r => r.json())
-      .then(data => { setEmployees(data); setLoading(false) })
-      .catch(() => setLoading(false))
     setTimeout(() => searchRef.current?.focus(), 100)
   }, [])
 
-  const filtered = employees.filter(e =>
-    !searchTerm.trim() ||
-    e.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    e.employeeCode.toLowerCase().includes(searchTerm.toLowerCase())
-  ).slice(0, 20) // Limit to top 20 results
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) {
+      setEmployees([])
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/admin/employees?q=${encodeURIComponent(searchTerm)}`)
+      if (res.ok) {
+        setEmployees(await res.json())
+      }
+    } catch {
+      setError('เชื่อมต่อระบบค้นหาล้มเหลว')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const handleAdd = async (empId: string) => {
-    setAdding(empId)
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSearch()
+  }
+
+  const handleSelectAll = () => {
+    if (employees.length === 0) return
+    const allSelected = employees.every(e => selectedIds.has(e.id))
+    const newSet = new Set(selectedIds)
+    if (allSelected) {
+      employees.forEach(e => newSet.delete(e.id))
+    } else {
+      employees.forEach(e => newSet.add(e.id))
+    }
+    setSelectedIds(newSet)
+  }
+
+  const toggleSelect = (id: string) => {
+    const newSet = new Set(selectedIds)
+    if (newSet.has(id)) newSet.delete(id)
+    else newSet.add(id)
+    setSelectedIds(newSet)
+  }
+
+  const handleBulkAdd = async () => {
+    if (selectedIds.size === 0) return
+    setAdding(true)
     setError('')
     try {
       const res = await fetch(`/api/admin/courses/${courseId}/trainees`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeId: empId, sessionId })
+        body: JSON.stringify({ employeeIds: Array.from(selectedIds), sessionId })
       })
       const data = await res.json()
       if (res.ok) {
@@ -118,77 +153,131 @@ function AddTraineeModal({
     } catch {
       setError('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้')
     } finally {
-      setAdding(null)
+      setAdding(false)
     }
   }
 
+  const allFilteredSelected = employees.length > 0 && employees.every(e => selectedIds.has(e.id))
+
   return createPortal(
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="p-5 border-b border-[var(--color-border)] flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold text-[var(--color-text)]">เพิ่มผู้เข้าอบรม</h3>
-            <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">ค้นหาและเลือกพนักงาน</p>
+            <h3 className="text-lg font-bold text-[var(--color-text)]">เพิ่มผู้เข้าอบรม (จำนวนมาก)</h3>
+            <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">ค้นหา รหัส, ชื่อ, แผนก หรือสาขา เพื่อเลือกพนักงาน</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
 
-        {/* Search */}
-        <div className="p-4 border-b border-[var(--color-border)]">
-          <div className="relative">
+        {/* Search Bar */}
+        <div className="p-4 border-b border-[var(--color-border)] bg-gray-50 flex gap-2">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               ref={searchRef}
               type="text"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              placeholder="พิมพ์ชื่อหรือรหัสพนักงาน..."
-              className="input-field pl-9 w-full bg-white"
+              onKeyDown={handleKeyDown}
+              placeholder="พิมพ์คำค้นหาแล้วกด Enter..."
+              className="input-field pl-9 w-full bg-white text-sm"
             />
           </div>
-          {error && <p className="text-red-500 text-xs mt-2 font-medium">{error}</p>}
+          <button 
+            onClick={handleSearch}
+            className="btn-primary whitespace-nowrap text-sm px-4"
+          >
+            ค้นหา
+          </button>
         </div>
 
+        {/* Action Bar (Select All) */}
+        {employees.length > 0 && (
+          <div className="px-5 py-3 border-b border-[var(--color-border)] flex items-center justify-between bg-white">
+            <button 
+              onClick={handleSelectAll}
+              className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-primary transition-colors"
+            >
+              {allFilteredSelected ? (
+                <CheckSquare className="w-5 h-5 text-primary" />
+              ) : (
+                <Square className="w-5 h-5 text-gray-400" />
+              )}
+              เลือกทั้งหมดที่ค้นเจอ ({employees.length} คน)
+            </button>
+            <span className="text-sm font-bold text-primary">เลือกแล้ว {selectedIds.size} คน</span>
+          </div>
+        )}
+
+        {error && <div className="px-5 py-2 text-red-500 text-xs font-medium bg-red-50 border-b border-red-100">{error}</div>}
+
         {/* Employee List */}
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto p-2 bg-gray-50/50">
           {loading ? (
-            <div className="p-8 text-center text-gray-400 text-sm">กำลังโหลด...</div>
-          ) : filtered.length === 0 ? (
-            <div className="p-8 text-center text-gray-400 text-sm">
-              {searchTerm ? 'ไม่พบพนักงาน' : 'ไม่มีข้อมูลพนักงาน'}
+            <div className="p-12 text-center text-gray-400 text-sm">กำลังค้นหาข้อมูล...</div>
+          ) : employees.length === 0 ? (
+            <div className="p-12 text-center text-gray-400 text-sm">
+              {searchTerm ? 'ไม่พบพนักงานที่ตรงกับคำค้นหา' : 'พิมพ์คำค้นหาเพื่อแสดงรายชื่อพนักงาน'}
             </div>
           ) : (
             <div className="space-y-1">
-              {filtered.map(emp => (
-                <button
-                  key={emp.id}
-                  onClick={() => handleAdd(emp.id)}
-                  disabled={adding === emp.id}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all ${
-                    adding === emp.id ? 'bg-gray-100 opacity-60' : 'hover:bg-indigo-50 hover:shadow-sm'
-                  }`}
-                >
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                    {emp.fullName.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm text-[var(--color-text)] truncate">{emp.fullName}</div>
-                    <div className="text-xs text-[var(--color-text-secondary)]">
-                      {emp.employeeCode} {emp.departmentCode ? `• ${emp.departmentCode}` : ''}
+              {employees.map(emp => {
+                const isSelected = selectedIds.has(emp.id)
+                return (
+                  <label
+                    key={emp.id}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      toggleSelect(emp.id)
+                    }}
+                    className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border ${
+                      isSelected ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-transparent hover:border-gray-200 hover:shadow-sm'
+                    }`}
+                  >
+                    <div className="pl-1">
+                      {isSelected ? (
+                        <CheckSquare className="w-5 h-5 text-primary" />
+                      ) : (
+                        <Square className="w-5 h-5 text-gray-300" />
+                      )}
                     </div>
-                  </div>
-                  {adding === emp.id ? (
-                    <div className="w-5 h-5 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin flex-shrink-0" />
-                  ) : (
-                    <Plus className="w-5 h-5 text-indigo-400 flex-shrink-0" />
-                  )}
-                </button>
-              ))}
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-gray-600 text-sm font-bold flex-shrink-0">
+                      {emp.fullName.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm text-[var(--color-text)] truncate">{emp.fullName}</div>
+                      <div className="flex flex-wrap gap-2 text-[11px] mt-0.5 text-gray-500 font-mono">
+                        <span className="bg-gray-100 px-1.5 py-0.5 rounded">{emp.employeeCode}</span>
+                        {emp.departmentCode && <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">{emp.departmentCode}</span>}
+                        {emp.branchCode && <span className="bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded">{emp.branchCode}</span>}
+                      </div>
+                    </div>
+                  </label>
+                )
+              })}
             </div>
           )}
+        </div>
+
+        {/* Footer Actions */}
+        <div className="p-4 border-t border-[var(--color-border)] bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+          <button 
+            onClick={onClose} 
+            className="btn-secondary text-sm"
+          >
+            ยกเลิก
+          </button>
+          <button 
+            onClick={handleBulkAdd}
+            disabled={adding || selectedIds.size === 0}
+            className="btn-primary text-sm min-w-[140px] justify-center"
+          >
+            {adding ? 'กำลังเพิ่ม...' : `เพิ่มพนักงาน (${selectedIds.size})`}
+          </button>
         </div>
       </div>
     </div>,
@@ -531,6 +620,7 @@ export default function TraineesClient({
                       <th className="px-5 py-3 text-left font-semibold text-gray-600">รหัส</th>
                       <th className="px-5 py-3 text-left font-semibold text-gray-600">ชื่อ-นามสกุล</th>
                       <th className="px-5 py-3 text-left font-semibold text-gray-600">สาขา / แผนก</th>
+                      <th className="px-5 py-3 text-center font-semibold text-gray-600">คะแนน</th>
                       <th className="px-5 py-3 text-left font-semibold text-gray-600">วันที่ลงทะเบียน</th>
                       <th className="px-5 py-3 text-center font-semibold text-gray-600">สถานะ</th>
                     </tr>
@@ -545,6 +635,9 @@ export default function TraineesClient({
                         </td>
                         <td className="px-5 py-3 text-gray-500 text-xs">
                           {[reg.employee.branchCode, reg.employee.departmentCode].filter(Boolean).join(' • ') || '-'}
+                        </td>
+                        <td className="px-5 py-3 text-center font-bold text-gray-700">
+                          {reg.score !== null && reg.score !== undefined ? `${reg.score}%` : '-'}
                         </td>
                         <td className="px-5 py-3 text-gray-500 text-xs">{formatFullDate(reg.registeredAt)}</td>
                         <td className="px-5 py-3">

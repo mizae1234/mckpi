@@ -22,7 +22,7 @@
 4. **Tracking & Progress (ตารางบันทึกการเรียน)**:
    - `StepProgress`: เก็บสถานะการดูวิดีโอ (`watch_percent`) ว่าดูถึงกี่เปอร์เซ็นแล้ว
    - `QuizAttempt`: เก็บประวัติการทำข้อสอบ (รวมถึงตัวเลือกที่ตอบ และคะแนนที่ได้)
-   - `TrainingResult` และ `Certificate`: ระบบผลลัพธ์และใบรับรองเมื่อจบการศึกษาแล้ว
+   - `TrainingResult` และ `Certificate`: ระบบผลลัพธ์และใบรับรองเมื่อจบการศึกษาแล้ว (รับรองแหล่งที่มา ONLINE, OFFLINE, EXTERNAL, IMPORT)
 6. **KPI Management**:
    - `Kpi`: จัดเก็บตัวชี้วัดผูกกับปี `year`
    - `CourseKpi`: ตารางเชื่อมแบบ Many-to-Many ระหว่าง Course และ Kpi
@@ -53,23 +53,31 @@
    - กรณี **ไม่ได้ผูกข้อสอบ (0 Steps)**: เมื่อแอดมินเข้าไปเช็คชื่อให้สถานะเป็น "เข้าร่วมแล้ว (ATTENDED)" ระบบจะบันทึกผลว่าให้พนักงาน "สอบผ่าน (PASSED 100%)" คอร์สนั้นอัตโนมัติ
    - กรณี **มีการผูกข้อสอบ / Post-test**: การที่แอดมินเช็คชื่อให้ "ATTENDED" จะทำหน้าที่เป็นแค่ **"การปลดล็อกสิทธิ์สอบ"** พนักงานต้องกดเข้าสู่หน้าต่างออนไลน์เพื่อทำข้อสอบออนไลน์ในระบบให้ผ่านเกณฑ์ ถึงจะได้รับสถานะ "สอบผ่าน (PASSED)"
 
-### 3.4 KPI Mapping System
-- **ปีของตัวชี้วัด (Yearly KPIs)**: ข้อมูล KPI จะถูกแยกตามปี (Year) แอดมินสามารถสร้างใหม่หรือใช้ฟังก์ชัน "คัดลอกจากปีที่แล้ว (Copy from previous year)" ได้
-- **การผูก Course & KPI**: 1 คอร์ส สามารถตอบโจทย์ได้หลาย KPI ผ่านตารางตรงกลาง `CourseKpi`
+### 3.4 KPI Mapping & Dashboard Reporting
+- **ปีของตัวชี้วัด (Yearly KPIs)**: ข้อมูล KPI จะถูกแยกตามปี (Year) 
+- **การนับข้อมูลรายปีบน Dashboard**: การดึงผลลัพธ์ Dashboard ข้ามปี (Annual Dashboard) จะใช้การ Filter ขอบเขตวันที่จากฟิลด์ `completedAt` เป็นหลัก เพื่อให้ครอบคลุม "หลักสูตรนอกเป้าหมาย (Extracurricular / นอก KPI)" ด้วยเสมอ ไม่ควร Join แค่ตาราง CourseKpi อย่างเดียว
+
+### 3.5 Bulk Excel System (ระบบนำเข้าและส่งออกผลอบรม)
+- ระบบรองรับการ Export และ Import ข้อมูล `TrainingResult` สำหรับแอดมิน 
+- แหล่งที่มาของข้อมูล (ResultSource) สำหรับกรณีที่รังรวมจากภายนอก จะถูกกำกับด้วยสถานะ **`IMPORT`** ซึ่งหลังบ้านใช้วิธีนำไป `upsert` เพื่อประมวลผลทับของเก่าหรือสร้างสถิติใหม่ได้อย่างลื่นไหล
+
+### 3.6 AI Smart Suggestion (เวทมนตร์วิเคราะห์เป้าหมายผู้เรียน)
+ระบบผสานคุณสมบัติจาก **Gemini API** โดยตรง (รหัส `gemini-3-flash-preview` ณ ปี 2026) เพื่อเป็นผู้ช่วยให้กับฝ่าย HR ในการประเมินว่าหลักสูตรใด ควรตั้งค่าผู้เรียนไปที่ตำแหน่งหรือแผนกใด:
+- วงจรการทำงาน: **(ส่งพารามิเตอร์ Course) -> (API ถาม Gemini) -> (ได้รับคำแนะนำ JSON โค้ดฝ่าย) -> (ดึงข้อมูลพนักงานขึ้นมาทำ Auto-Select ติ๊กถูกอัตโนมัติ)**
 
 ## 4. Design System & UX Standards
 - **Framework**: `Next.js 15 (App Router)` + `React 19` + `Tailwind CSS v4`
 - **Theme**: เราใช้สีธีมหลัก เป็น โทน ขาว/แดง/เหลือง/ดำ (อิงตาม Corporate Identity ของบริษัท)
-- **Token CSS Variables**: ให้ใช้ Token ที่ถูกสร้างไว้แล้วใน `src/app/globals.css` แทนการระบุสีตรงๆ เช่น:
-  - `var(--color-primary)`
-  - `var(--color-accent)`
-  - `var(--color-text)`
-- **UX ข้อควรระวัง (Number Inputs)**: ช่องกรอกตัวเลขทั้งหมดในระบบ (เช่น เครดิตชั่วโมง, เปอร์เซ็นต์ผ่าน) **ห้ามใช้ค่า default พังๆ ที่ลบให้ว่างไม่ได้** แนะนำให้ผูก Type เป็น `value={value || ''}` แบบ String ชั่วคราว และ **บังคับใส่** `onFocus={(e) => e.target.select()}` เสมอ เพื่อลดความรำคาญเวลาแก้ตัวเลข
+- **Token CSS Variables**: ให้ใช้ Token ที่ถูกสร้างไว้แล้วใน `src/app/globals.css` แทนการระบุสีตรงๆ ได้แก่ `var(--color-primary)`, `var(--color-accent)`, `var(--color-text)`
+- **UX ข้อควรระวัง (Alert UI)**: 
+  - **ห้ามเรียกใช้งาน `window.alert()`, `confirm()` หรือ แจ้งเตือนของเบราว์เซอร์เด็ดขาด!** 
+  - ให้เรียกใช้งานอินเทอร์เฟซ `useModal()` จาก `@/components/ModalProvider` แทนเสมอ (เช่น `showAlert({ type: 'success', message: '...' })` เพื่อความคล่องตัวและสวยงาม
+  - ข้อผิดพลาดในการบันทึกให้ใช้ Error Label สีแดง (`setError('...')`) แทรกลงใน UI ตรงๆ 
+- **UX ข้อควรระวัง (Number Inputs)**: ช่องกรอกตัวเลขทั้งหมดในระบบ **ห้ามใช้ค่า default พังๆ ที่ลบให้ว่างไม่ได้** แนะนำให้ผูก Type เป็น `value={value || ''}` แบบ String ชั่วคราว และ **บังคับใส่** `onFocus={(e) => e.target.select()}` เสมอ 
 - **Class Components สำเร็จรูป**: 
   - `btn-primary`, `btn-secondary`: สำหรับระบบปุ่ม
   - `stat-card`, `glass-card`: สำหรับ Card กล่องเนื้อหาและกราฟ
   - `input-field`: สำหรับฟอร์มกรอกข้อมูล
-  - `badge-success`, `badge-danger`, `badge-accent`: สำหรับทำป้าย Tag
 
 ## 5. File References (ระบบเก็บไฟล์บน Cloudflare R2)
 ไฟล์วิดีโอรูปภาพที่เกี่ยวข้องกับคอร์ส จะไม่ได้ถูกอัพขึ้นระบบไฟล์ตรงๆ แต่จะอัปขึ้น **Cloudflare R2** ผ่านไลบรารี `@aws-sdk/client-s3` โดยมี `lib/r2.ts` เป็นตัวจัดการ และจะใช้งานลิ้งค์สาธารณะ (R2_PUBLIC_URL) ตลอดการเปิดหน้าเว็บ

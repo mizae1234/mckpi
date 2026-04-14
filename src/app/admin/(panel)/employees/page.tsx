@@ -8,10 +8,12 @@ export const dynamic = 'force-dynamic'
 export default async function EmployeesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; departmentCode?: string; branchCode?: string }>
+  searchParams: Promise<{ q?: string; departmentCode?: string; branchCode?: string; page?: string }>
 }) {
-  // ... (keep search logic unchanged)
   const params = await searchParams
+  const page = parseInt(params.page || '1', 10)
+  const pageSize = 50
+
   const q = params.q || ''
   const departmentCode = params.departmentCode || ''
   const branchCode = params.branchCode || ''
@@ -26,11 +28,21 @@ export default async function EmployeesPage({
   if (departmentCode) where.departmentCode = departmentCode
   if (branchCode) where.branchCode = branchCode
 
+  const total = await prisma.employee.count({ where })
+  const totalPages = Math.ceil(total / pageSize)
+
   const employees = await prisma.employee.findMany({
     where,
     orderBy: { employeeCode: 'asc' },
     include: { branch: true },
+    skip: (page - 1) * pageSize,
+    take: pageSize,
   })
+
+  // Helper for pagination links
+  const createPageUrl = (p: number) => {
+    return `?q=${encodeURIComponent(q)}&departmentCode=${encodeURIComponent(departmentCode)}&branchCode=${encodeURIComponent(branchCode)}&page=${p}`
+  }
 
   // Get unique departments and branches for filters
   const allEmployees = await prisma.employee.findMany({
@@ -132,6 +144,32 @@ export default async function EmployeesPage({
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between border-t border-[var(--color-border)] pt-4 mt-6">
+          <div className="text-sm text-gray-500">
+            แสดง {((page - 1) * pageSize) + 1} ถึง {Math.min(page * pageSize, total)} จาก {total} รายการ
+          </div>
+          <div className="flex gap-1">
+            {page > 1 && (
+              <Link href={createPageUrl(page - 1)} className="px-3 py-1 text-sm border border-[var(--color-border)] rounded-md hover:bg-gray-50 text-gray-700 transition">
+                ก่อนหน้า
+              </Link>
+            )}
+            
+            <span className="px-3 py-1 text-sm font-medium border border-primary bg-indigo-50 text-primary rounded-md">
+              หน้า {page} / {totalPages}
+            </span>
+
+            {page < totalPages && (
+              <Link href={createPageUrl(page + 1)} className="px-3 py-1 text-sm border border-[var(--color-border)] rounded-md hover:bg-gray-50 text-gray-700 transition">
+                ถัดไป
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

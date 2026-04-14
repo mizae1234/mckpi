@@ -57,12 +57,16 @@ export default async function TraineesPage({ params }: { params: Promise<{ id: s
     location: s.location,
     capacity: s.capacity,
     trainerName: s.trainerName,
-    registrations: s.registrations.map(r => ({
-      id: r.id,
-      status: r.status,
-      registeredAt: r.registeredAt.toISOString(),
-      employee: r.employee,
-    }))
+    registrations: s.registrations.map(r => {
+      const resultMatch = course.results.find(res => res.employeeId === r.employee.id)
+      return {
+        id: r.id,
+        status: r.status,
+        score: resultMatch?.score ?? null,
+        registeredAt: r.registeredAt.toISOString(),
+        employee: r.employee,
+      }
+    })
   }))
 
   // Online learners from TrainingResult (no session-based registration)

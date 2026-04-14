@@ -62,13 +62,72 @@ export async function GET() {
       course: course
     }))
 
-    // Combine them and Sync Status from TrainingResult (Actual History)
+    // 4. Also fetch any courses the user has a TrainingResult for (manual enrollments)
     const trainingResults = await prisma.trainingResult.findMany({
-      where: { employeeId: session.user.id }
+      where: { employeeId: session.user.id },
+      include: {
+        course: {
+          select: {
+            id: true,
+            code: true,
+            title: true,
+            trainingType: true,
+            isMandatory: true,
+          }
+        }
+      }
     })
-    const trStatusMap = new Map(trainingResults.map(tr => [tr.courseId, tr.status]))
 
-    const allAssignments = [...assignments, ...virtualAssignments].map(a => ({
+    const trStatusMap = new Map(trainingResults.map(tr => [tr.courseId, tr.status]))
+    
+    // Add missing courses from TrainingResult
+    const autoEnrolledCourses = trainingResults
+      .filter(tr => !existingCourseIds.has(tr.courseId))
+      .map(tr => ({
+        id: `manual-${tr.courseId}`,
+        employeeId: session.user.id,
+        courseId: tr.courseId,
+        assignedBy: 'SELF_OR_ADMIN',
+        assignedAt: tr.createdAt.toISOString(),
+        dueDate: null,
+        status: tr.status,
+        course: tr.course
+      }))
+
+    // 5. Fetch any OfflineRegistrations (Classroom reservations)
+    const offlineRegs = await prisma.offlineRegistration.findMany({
+      where: { employeeId: session.user.id },
+      include: {
+        session: {
+          include: {
+            course: {
+              select: {
+                id: true,
+                code: true,
+                title: true,
+                trainingType: true,
+                isMandatory: true,
+              }
+            }
+          }
+        }
+      }
+    })
+
+    const offlineCourses = offlineRegs
+      .filter(reg => !existingCourseIds.has(reg.session.courseId) && !trainingResults.find(t => t.courseId === reg.session.courseId))
+      .map(reg => ({
+        id: `offline-${reg.id}`,
+        employeeId: session.user.id,
+        courseId: reg.session.courseId,
+        assignedBy: 'SELF',
+        assignedAt: reg.registeredAt.toISOString(),
+        dueDate: reg.session.startDate.toISOString(), // Use session start date as due date cue
+        status: reg.status === 'CANCELLED' ? 'CANCELLED' : 'NOT_STARTED', // Just a visual proxy
+        course: reg.session.course
+      }))
+
+    const allAssignments = [...assignments, ...virtualAssignments, ...autoEnrolledCourses, ...offlineCourses].map(a => ({
       ...a,
       status: trStatusMap.get(a.courseId) || a.status
     }))

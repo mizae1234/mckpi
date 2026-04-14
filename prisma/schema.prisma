@@ -63,6 +63,7 @@ enum ResultSource {
   ONLINE
   OFFLINE
   EXTERNAL
+  IMPORT
 }
 
 enum CertificateStatus {
@@ -292,6 +293,8 @@ model TrainingResult {
   courseId    String
   status       ResultStatus @default(IN_PROGRESS)
   score        Float?
+  pretestScore Float?
+  posttestScore Float?
   source       ResultSource
   completedAt DateTime?
   createdAt   DateTime     @default(now())

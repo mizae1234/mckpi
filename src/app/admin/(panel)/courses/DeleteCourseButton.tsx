@@ -41,16 +41,16 @@ export default function DeleteCourseButton({ courseId, courseTitle }: { courseId
     <button
       onClick={handleDelete}
       disabled={loading}
-      className={`p-1.5 rounded-lg transition-colors ${
-        loading ? 'text-gray-400' : 'text-gray-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100'
+      className={`w-full flex items-center gap-2 px-4 py-2 text-sm text-left transition-colors ${
+        loading ? 'text-gray-400 bg-gray-50' : 'text-red-600 hover:bg-red-50 hover:text-red-700'
       }`}
-      title="ลบคอร์ส"
     >
       {loading ? (
-        <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+        <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
       ) : (
-        <Trash2 className="w-4 h-4" />
+        <Trash2 className="w-4 h-4 flex-shrink-0" />
       )}
+      {loading ? 'กำลังลบ...' : 'ลบหลักสูตร'}
     </button>
   )
 }
