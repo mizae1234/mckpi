@@ -8,7 +8,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { status, title, description, trainingType, passScore, creditHours, isMandatory, kpiIds } = body
+    const { status, title, description, trainingType, passScore, creditHours, isMandatory, onboardingDeadlineDays, kpiIds } = body
 
     const dataToUpdate: any = {}
     if (status !== undefined) dataToUpdate.status = status
@@ -18,6 +18,9 @@ export async function PUT(
     if (passScore !== undefined) dataToUpdate.passScore = passScore
     if (creditHours !== undefined) dataToUpdate.creditHours = creditHours
     if (isMandatory !== undefined) dataToUpdate.isMandatory = isMandatory
+    if (onboardingDeadlineDays !== undefined) {
+      dataToUpdate.onboardingDeadlineDays = onboardingDeadlineDays === '' ? 0 : Number(onboardingDeadlineDays)
+    }
 
     const updatedCourse = await prisma.course.update({
       where: { id },

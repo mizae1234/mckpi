@@ -21,6 +21,8 @@ export default function CreateCoursePage() {
   const [kpiOptions, setKpiOptions] = useState<KpiOption[]>([])
   const [selectedKpiIds, setSelectedKpiIds] = useState<string[]>([])
   const [kpiSearch, setKpiSearch] = useState('')
+  const [isMandatory, setIsMandatory] = useState(false)
+  const [onboardingDeadlineDays, setOnboardingDeadlineDays] = useState<number | string>(14)
 
   useEffect(() => {
     const currentYear = new Date().getFullYear()
@@ -57,7 +59,8 @@ export default function CreateCoursePage() {
       trainingType: formData.get('trainingType'),
       passScore: Number(formData.get('passScore')),
       creditHours: Number(formData.get('creditHours')),
-      isMandatory: formData.get('isMandatory') === 'true',
+      isMandatory,
+      onboardingDeadlineDays: isMandatory ? (onboardingDeadlineDays === '' ? 0 : Number(onboardingDeadlineDays)) : 0,
       status: formData.get('status'),
       kpiIds: selectedKpiIds,
     }
@@ -134,10 +137,15 @@ export default function CreateCoursePage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1">บังคับเรียน</label>
-            <select name="isMandatory" className="input-field">
-              <option value="false">ไม่บังคับ</option>
-              <option value="true">บังคับ</option>
-            </select>
+            <label className="flex items-center gap-3 cursor-pointer select-none p-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors h-[42px]">
+              <input
+                type="checkbox"
+                checked={isMandatory}
+                onChange={e => setIsMandatory(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+              />
+              <span className="text-sm text-[var(--color-text)]">บังคับ</span>
+            </label>
           </div>
           <div>
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1">สถานะ</label>
@@ -147,6 +155,28 @@ export default function CreateCoursePage() {
             </select>
           </div>
         </div>
+
+        {/* Onboarding Deadline - แสดงเมื่อ isMandatory */}
+        {isMandatory && (
+          <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/50">
+            <label className="block text-sm font-semibold text-amber-800 mb-1">
+              ⏰ กำหนดอบรมหลังเริ่มงาน
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min={0}
+                max={365}
+                value={onboardingDeadlineDays}
+                onChange={e => setOnboardingDeadlineDays(e.target.value === '' ? '' : Number(e.target.value))}
+                onFocus={e => e.target.select()}
+                className="input-field w-24 py-2"
+              />
+              <span className="text-sm text-amber-700">วัน — พนักงานใหม่ต้องอบรมให้เสร็จภายใน <strong>{onboardingDeadlineDays} วัน</strong> หลังเริ่มงาน</span>
+            </div>
+            <p className="text-xs text-amber-600 mt-1.5">ใช้ในรายงาน KPI พนักงานใหม่ (Onboarding KPI Report)</p>
+          </div>
+        )}
 
         {/* KPI Picker */}
         {kpiOptions.length > 0 && (

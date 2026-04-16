@@ -20,6 +20,7 @@ interface CourseEditModalProps {
     passScore: number
     creditHours?: number
     isMandatory: boolean
+    onboardingDeadlineDays?: number
     trainingType: string
     kpiIds?: string[]
   }
@@ -33,6 +34,7 @@ export default function CourseEditModal({ course, onClose }: CourseEditModalProp
   const [passScore, setPassScore] = useState<number | string>(course.passScore)
   const [creditHours, setCreditHours] = useState<number | string>(course.creditHours || 0)
   const [isMandatory, setIsMandatory] = useState(course.isMandatory)
+  const [onboardingDeadlineDays, setOnboardingDeadlineDays] = useState<number | string>(course.onboardingDeadlineDays ?? 14)
   const [trainingType, setTrainingType] = useState(course.trainingType)
   const [loading, setLoading] = useState(false)
 
@@ -76,6 +78,7 @@ export default function CourseEditModal({ course, onClose }: CourseEditModalProp
           passScore: Number(passScore) || 0, 
           creditHours: Number(creditHours) || 0, 
           isMandatory, 
+          onboardingDeadlineDays: isMandatory ? (onboardingDeadlineDays === '' ? 0 : Number(onboardingDeadlineDays)) : 0,
           trainingType, 
           kpiIds: selectedKpiIds 
         }),
@@ -181,6 +184,25 @@ export default function CourseEditModal({ course, onClose }: CourseEditModalProp
               <div className="text-xs text-[var(--color-text-secondary)]">พนักงานทุกคนต้องเรียนหลักสูตรนี้</div>
             </div>
           </label>
+
+          {/* Onboarding Deadline (แสดงเมื่อเป็นหลักสูตรบังคับ) */}
+          {isMandatory && (
+            <div className="ml-0 p-3 rounded-xl border border-amber-200 bg-amber-50/50">
+              <label className="block text-sm font-medium text-[var(--color-text)] mb-1">กำหนดอบรมหลังเริ่มงาน (วัน)</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  max={365}
+                  value={onboardingDeadlineDays}
+                  onChange={(e) => setOnboardingDeadlineDays(e.target.value === '' ? '' : Number(e.target.value))}
+                  onFocus={(e) => e.target.select()}
+                  className="input-field py-2 w-24"
+                />
+                <span className="text-xs text-[var(--color-text-secondary)]">วัน (ใช้ในรายงาน KPI พนักงานใหม่)</span>
+              </div>
+            </div>
+          )}
 
           {/* KPI Picker */}
           {kpiOptions.length > 0 && (

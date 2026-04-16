@@ -13,6 +13,20 @@ const prisma = new PrismaClient({ adapter })
 
 async function main() {
   console.log('🌱 Seeding MKPI Database...')
+  // ─── 0. CLEAN TRANSACTIONS (For Demo) ──────────────
+  console.log('🧹 Cleaning old transactions...')
+  await prisma.trainingResult.deleteMany({})
+  await prisma.stepProgress.deleteMany({})
+  await prisma.quizAttempt.deleteMany({})
+  await prisma.courseAssignment.deleteMany({})
+  await prisma.offlineRegistration.deleteMany({})
+  await prisma.certificate.deleteMany({})
+  await prisma.kpiCourse.deleteMany({})
+  await prisma.kpi.deleteMany({})
+  
+  await prisma.question.deleteMany({})
+  await prisma.courseStep.deleteMany({})
+  await prisma.course.deleteMany({})
 
   // ─── 1. Admin ──────────────────────────────────────
   const adminPassword = await bcrypt.hash('admin123', 10)
@@ -29,7 +43,8 @@ async function main() {
   console.log('✅ Admin created (admin / admin123)')
 
   // ─── 1.5. Branches ──────────────────────────────
-  const branchesData = [
+  // เก็บ Script สาขาเดิมไว้เผื่อใช้ตอนขึ้น Production
+  const productionBranchesData = [
     { code: '5', name: 'โรบินสัน สุขุมวิท' },
     { code: '6', name: 'แมกซ์ แวลู ศรีนครินทร์ (ไดร์ฟ ทรู)' },
     { code: '12', name: 'อิมพีเรียล สำโรง' },
@@ -253,21 +268,66 @@ async function main() {
     { code: '19400', name: 'บริษัท แมคไทย จำกัด (สำนักงานใหญ่) HR' },
     { code: '40027', name: 'พีทีที วิภาวดีรังสิต ราบ 1' },
   ]
+
+  // สาขาใหม่สำหรับ Development (20 สาขา)
+  const devBranchesData = [
+    { code: '001', name: 'สาขา สยาม', isHeadOffice: false },
+    { code: '002', name: 'สาขา สุขุมวิท', isHeadOffice: false },
+    { code: '003', name: 'สาขา สีลม', isHeadOffice: false },
+    { code: '004', name: 'สาขา สาทร', isHeadOffice: false },
+    { code: '005', name: 'สาขา อโศก', isHeadOffice: false },
+    { code: '006', name: 'สาขา รัชดาภิเษก', isHeadOffice: false },
+    { code: '007', name: 'สาขา ลาดพร้าว', isHeadOffice: false },
+    { code: '008', name: 'สาขา บางนา', isHeadOffice: false },
+    { code: '009', name: 'สาขา ปิ่นเกล้า', isHeadOffice: false },
+    { code: '010', name: 'สาขา พระราม 9', isHeadOffice: false },
+    { code: '011', name: 'สาขา พญาไท', isHeadOffice: false },
+    { code: '012', name: 'สาขา เยาวราช', isHeadOffice: false },
+    { code: '013', name: 'สาขา ทองหล่อ', isHeadOffice: false },
+    { code: '014', name: 'สาขา เอกมัย', isHeadOffice: false },
+    { code: '015', name: 'สาขา พร้อมพงษ์', isHeadOffice: false },
+    { code: '016', name: 'สาขา พระโขนง', isHeadOffice: false },
+    { code: '017', name: 'สาขา อ่อนนุช', isHeadOffice: false },
+    { code: '018', name: 'สาขา จตุจักร', isHeadOffice: false },
+    { code: '019', name: 'สาขา อนุสาวรีย์ชัยฯ', isHeadOffice: false },
+    { code: 'HQ', name: 'สำนักงานใหญ่ (Head Office)', isHeadOffice: true },
+  ]
+
+  // ลบข้อมูลสาขาเดิมเพื่อเคลียร์ของเก่า (ปลดล็อก FK ข้อมูลพนักงานก่อน)
+  await prisma.employee.deleteMany({})
+  await prisma.branch.deleteMany({})
+
+  const activeBranches = devBranchesData // เปลี่ยนเป็น productionBranchesData เมื่อจะขึ้นระบบจริง
+
   const branchMap: Record<string, string> = {}
-  for (const b of branchesData) {
+  for (const b of activeBranches) {
     const branch = await prisma.branch.upsert({
       where: { code: b.code },
-      update: { name: b.name },
-      create: { code: b.code, name: b.name },
+      update: { name: b.name, isHeadOffice: b.isHeadOffice },
+      create: { code: b.code, name: b.name, isHeadOffice: b.isHeadOffice },
     })
     branchMap[b.name] = branch.code
   }
-  console.log(`✅ ${branchesData.length} branches created`)
+  console.log(`✅ ${activeBranches.length} branches created`)
 
   // ─── 2. Employees ─────────────────────────────────
   const firstNames = ['สมชาย', 'สมหญิง', 'วิชัย', 'นภา', 'ประเสริฐ', 'มาลี', 'ศักดิ์ชัย', 'พรทิพย์', 'สายัณห์', 'สุชาติ', 'วิไล', 'ธิดา', 'ณรงค์', 'วีระ', 'อารีย์']
   const lastNames = ['ใจดี', 'รักเรียน', 'เก่งกาจ', 'สว่างศรี', 'มั่นคง', 'มีสุข', 'สุขสันต์', 'พิทักษ์', 'บุญมา', 'เจริญดี', 'สิงห์คำ', 'อิ่มแจ่ม']
-  const positions = ['พนักงาน', 'เจ้าหน้าที่', 'หัวหน้างาน', 'ผู้จัดการ', 'Programmer']
+  const branchPositions = [
+    { name: 'Barista', level: 2 },
+    { name: 'Cashier', level: 2 },
+    { name: 'Service Crew', level: 2 },
+    { name: 'Shift Supervisor', level: 6 },
+    { name: 'Store Manager', level: 10 },
+    { name: 'แม่บ้าน / ทำความสะอาด', level: 1 },
+  ]
+  const hqPositions = [
+    { name: 'IT Support', level: 4 },
+    { name: 'HR Executive', level: 4 },
+    { name: 'Marketing Officer', level: 4 },
+    { name: 'Manager', level: 10 },
+    { name: 'Director', level: 11 },
+  ]
   const departments = ['ฝ่ายปฏิบัติการ', 'ฝ่ายขาย', 'ฝ่าย IT', 'ฝ่ายบุคคล', 'ฝ่ายผลิต']
 
   const employees: any[] = []
@@ -275,9 +335,27 @@ async function main() {
   for (let i = 1; i <= 50; i++) {
     const randomFirstName = firstNames[Math.floor(Math.random() * firstNames.length)]
     const randomLastName = lastNames[Math.floor(Math.random() * lastNames.length)]
-    const randomPosition = positions[Math.floor(Math.random() * positions.length)]
-    const randomDepartment = departments[Math.floor(Math.random() * departments.length)]
-    const randomBranch = branchesData[Math.floor(Math.random() * branchesData.length)].name
+    // Give 20% to Head Office
+    let randomBranchData
+    if (Math.random() < 0.2) {
+      randomBranchData = activeBranches.find(b => b.isHeadOffice) || activeBranches[0]
+    } else {
+      const nonHqBranches = activeBranches.filter(b => !b.isHeadOffice)
+      randomBranchData = nonHqBranches[Math.floor(Math.random() * nonHqBranches.length)]
+    }
+    const randomBranch = randomBranchData.name
+    
+    // Assign position based on branch type
+    let randomPositionObj;
+    if (randomBranchData.isHeadOffice) {
+      randomPositionObj = hqPositions[Math.floor(Math.random() * hqPositions.length)]
+    } else {
+      randomPositionObj = branchPositions[Math.floor(Math.random() * branchPositions.length)]
+    }
+
+    const randomDepartment = randomBranchData.isHeadOffice 
+      ? departments[Math.floor(Math.random() * departments.length)] 
+      : 'ปฏิบัติการหน้าร้าน (สาขา)'
 
     const startYear = 1980
     const endYear = 2000
@@ -296,7 +374,8 @@ async function main() {
     employees.push({
       employeeCode: `E${String(i).padStart(5, '0')}`,
       fullName: `${randomFirstName} ${randomLastName}`,
-      positionCode: randomPosition,
+      positionCode: randomPositionObj.name,
+      positionLevel: randomPositionObj.level,
       departmentCode: randomDepartment,
       branch: randomBranch,
       dateOfBirth: dob,
@@ -315,7 +394,12 @@ async function main() {
 
     await prisma.employee.upsert({
       where: { employeeCode: emp.employeeCode },
-      update: {},
+      update: {
+        positionCode: emp.positionCode,
+        positionLevel: emp.positionLevel,
+        branchCode: branchMap[emp.branch],
+        departmentCode: emp.departmentCode,
+      },
       create: {
         ...emp,
         branch: undefined, // remove string field
@@ -329,26 +413,34 @@ async function main() {
   // ─── 3. Courses ────────────────────────────────────
   const onlineCourse = await prisma.course.upsert({
     where: { code: 'CRS-001' },
-    update: {},
+    update: { 
+      title: 'มาตรฐานการบริการและชงเครื่องดื่มเบื้องต้น',
+      description: 'เรียนรู้มาตรฐานการต้อนรับลูกค้า การใช้เครื่องชงกาแฟเอสเพรสโซ โดสซิ่ง การสตรีมนม และมาตรฐานสูตรเครื่องดื่ม',
+      onboardingDeadlineDays: 14 
+    },
     create: {
       code: 'CRS-001',
-      title: 'ความปลอดภัยในการทำงาน',
-      description: 'หลักสูตรอบรมเรื่องความปลอดภัยในสถานที่ทำงาน พร้อมวิดีโอและแบบทดสอบ',
+      title: 'มาตรฐานการบริการและชงเครื่องดื่มเบื้องต้น',
+      description: 'เรียนรู้มาตรฐานการต้อนรับลูกค้า การใช้เครื่องชงกาแฟเอสเพรสโซ โดสซิ่ง การสตรีมนม และมาตรฐานสูตรเครื่องดื่ม',
       trainingType: 'ONLINE',
       passScore: 80,
       isMandatory: true,
+      onboardingDeadlineDays: 14,
       status: 'PUBLISHED',
     },
   })
 
   await prisma.course.upsert({
     where: { code: 'CRS-002' },
-    update: {},
+    update: {
+      title: 'สุขอนามัยและความปลอดภัยด้านอาหาร (Food Safety)',
+      description: 'มาตรฐานความสะอาดส่วนบุคคล การจัดเก็บวัตถุดิบ (FIFO) การเช็ดล้างฆ่าเชื้อ',
+    },
     create: {
       code: 'CRS-002',
-      title: 'พัฒนาทักษะการสื่อสาร',
-      description: 'อบรมเชิงปฏิบัติการเรื่องการสื่อสารในองค์กร',
-      trainingType: 'OFFLINE',
+      title: 'สุขอนามัยและความปลอดภัยด้านอาหาร (Food Safety)',
+      description: 'มาตรฐานความสะอาดส่วนบุคคล การจัดเก็บวัตถุดิบ (FIFO) การเช็ดล้างฆ่าเชื้อ',
+      trainingType: 'ONLINE',
       passScore: 70,
       isMandatory: false,
       status: 'PUBLISHED',
@@ -357,18 +449,21 @@ async function main() {
 
   await prisma.course.upsert({
     where: { code: 'CRS-003' },
-    update: {},
+    update: {
+      title: 'ศิลปะการชงกาแฟขั้นสูง และลาเต้อาร์ต (Advanced)',
+      description: 'คลาสเรียนเชิงปฏิบัติการ ณ ศูนย์ฝึกอบรม (Head Office) ทดสอบการเทลาย',
+    },
     create: {
       code: 'CRS-003',
-      title: 'Compliance & Ethics (External)',
-      description: 'หลักสูตร Compliance จากระบบภายนอก นำเข้าผ่าน Excel',
-      trainingType: 'EXTERNAL',
+      title: 'ศิลปะการชงกาแฟขั้นสูง และลาเต้อาร์ต (Advanced)',
+      description: 'คลาสเรียนเชิงปฏิบัติการ ณ ศูนย์ฝึกอบรม (Head Office) ทดสอบการเทลาย',
+      trainingType: 'OFFLINE',
       passScore: 60,
       isMandatory: true,
       status: 'PUBLISHED',
     },
   })
-  console.log('✅ 3 courses created (ONLINE, OFFLINE, EXTERNAL)')
+  console.log('✅ 3 courses created (ONLINE, OFFLINE)')
 
   // ─── 4. Course Steps (for ONLINE course) ──────────
   const videoStep = await prisma.courseStep.upsert({
@@ -402,16 +497,16 @@ async function main() {
 
   // ─── 5. Questions for Quiz Step ───────────────────
   const questions = [
-    { questionText: 'อุปกรณ์ PPE ย่อมาจากอะไร?', options: ['Personal Protective Equipment', 'Private Protection Essentials', 'Public Protection Equipment', 'Primary Protection Element'], correctAnswer: 0 },
-    { questionText: 'เมื่อเกิดเหตุเพลิงไหม้ สิ่งแรกที่ต้องทำคืออะไร?', options: ['วิ่งหนี', 'กดสัญญาณแจ้งเหตุ', 'ดับเพลิงเอง', 'โทรแจ้งเพื่อน'], correctAnswer: 1 },
-    { questionText: 'สีแดงบนป้ายความปลอดภัยหมายถึงอะไร?', options: ['ข้อมูลทั่วไป', 'คำเตือน', 'ห้ามกระทำ / อันตราย', 'ปลอดภัย'], correctAnswer: 2 },
-    { questionText: 'ถังดับเพลิงชนิด CO2 เหมาะกับไฟประเภทใด?', options: ['ไม้ กระดาษ', 'น้ำมัน ไขมัน', 'อุปกรณ์ไฟฟ้า', 'โลหะ'], correctAnswer: 2 },
-    { questionText: 'ข้อใดคือหลัก 5ส ในที่ทำงาน?', options: ['สะสาง สะดวก สะอาด สุขลักษณะ สร้างนิสัย', 'สวย สะอาด สดใส สุข สำเร็จ', 'เสียง สี สัมผัส สุข สงบ', 'สร้าง ส่ง เสริม สอน สั่ง'], correctAnswer: 0 },
-    { questionText: 'เครื่องหมาย ☣️ หมายถึงอะไร?', options: ['สารเคมี', 'กัมมันตรังสี', 'อันตรายทางชีวภาพ', 'ไฟฟ้าแรงสูง'], correctAnswer: 2 },
-    { questionText: 'ข้อใดเป็นการปฏิบัติที่ถูกต้องเมื่อยกของหนัก?', options: ['ก้มหลังยก', 'ย่อเข่าแล้วยก', 'บิดตัวยก', 'ยกด้วยมือข้างเดียว'], correctAnswer: 1 },
-    { questionText: 'ทางหนีไฟควรตรวจสอบทุกกี่เดือน?', options: ['1 เดือน', '3 เดือน', '6 เดือน', '12 เดือน'], correctAnswer: 0 },
-    { questionText: 'หากพบสายไฟชำรุด ควรทำอย่างไร?', options: ['ใช้เทปพันไว้', 'แจ้งหัวหน้างานทันที', 'ถอดปลั๊กแล้วใช้ต่อ', 'ไม่ต้องทำอะไร'], correctAnswer: 1 },
-    { questionText: 'การฝึกซ้อมอพยพหนีไฟควรจัดทุกปีอย่างน้อยกี่ครั้ง?', options: ['1 ครั้ง', '2 ครั้ง', '4 ครั้ง', 'ไม่จำเป็นต้องจัด'], correctAnswer: 0 },
+    { questionText: 'อุณหภูมิที่เหมาะสมที่สุดในการสตรีมนมสำหรับเครื่องดื่มร้อนคือเท่าใด?', options: ['40-50 องศาเซลเซียส', '60-65 องศาเซลเซียส', '80-90 องศาเซลเซียส', 'เดือดจนมีฟองปุดๆ'], correctAnswer: 1 },
+    { questionText: 'สิ่งที่ควรทำเป็นอันดับแรกเมื่อลูกค้ายื่นบัตรสะสมคะแนนให้คือข้อใด?', options: ['บอกโปรโมชั่น', 'รับออเดอร์ก่อนแล้วค่อยแสกน', 'รับบัตร กล่าวทักทาย และสะสมคะแนนให้ตอนคิดเงิน', 'ปฏิเสธหากสั่งไม่ถึง 100 บาท'], correctAnswer: 2 },
+    { questionText: 'หลักการ FIFO (First In First Out) ในการจัดเก็บวัตถุดิบหมายถึงการทำสิ่งใด?', options: ['เก็บของใหญ่ไว้ในสุด', 'นำของที่เข้ามาก่อนมาใช้ก่อนตามวันหมดอายุ', 'ใช้ของใหม่ที่เพิ่งมาส่งก่อนเสมอ', 'ใครเข้ากะก่อนมีสิทธิ์เลือกวัตถุดิบก่อน'], correctAnswer: 1 },
+    { questionText: 'ช็อตเอสเพรสโซ่ (Espresso) ที่สกัดออกมาสมบูรณ์ควรมีลักษณะใด?', options: ['น้ำใสๆ จางๆ', 'ไหลเร็วมากภายใน 10 วินาที', 'มีคริมา (Crema) สีน้ำตาลทองอยู่ด้านบน', 'ดำสนิทและมีรสขมจัด'], correctAnswer: 2 },
+    { questionText: 'หากมีลูกค้าแพ้นมวัว พนักงานควรเสนอทางเลือกใด?', options: ['แจ้งว่าไม่สามารถขายให้ได้', 'แนะนำให้ใส่น้ำเปล่าแทน', 'แนะนำให้เปลี่ยนเป็นนมอัลมอนด์หรือนมถั่วเหลือง (ธัญพืช)', 'ผสมนมวัวครึ่งหนึ่งให้รสชาติไม่เปลี่ยน'], correctAnswer: 2 },
+    { questionText: 'เมื่อทำน้ำเชื่อม (Syrup) หกลงบนพื้น สิ่งแรกที่ควรทำเพื่อความปลอดภัยคืออะไร?', options: ['ปล่อยไว้จนกว่าจะหมดกะ', 'นำป้ายเตือน "ระวังพื้นลื่น" มาตั้ง และเช็ดทำความสะอาดทันที', 'บอกให้พนักงานคนอื่นเดินเลี่ยงไปชั่วคราว', 'รอให้ลูกค้าเดินผ่านไปก่อนแล้วค่อยเช็ด'], correctAnswer: 1 },
+    { questionText: 'เวลาทำความสะอาดหัวสตีมนมเครื่องชงกาแฟ (Steam Wand) ควรทำเมื่อใด?', options: ['ทำความสะอาดทันทีทุกครั้งหลังสตรีมนมเสร็จสิ้น', 'ทำความสะอาดก่อนปิดร้านเท่านั้น', 'ทำความสะอาดเมื่อเห็นคราบนมแห้งติด', 'ทำความสะอาดเช้าวันถัดไป'], correctAnswer: 0 },
+    { questionText: 'เครื่องดื่มเมนู Americano แตกต่างจาก Latte อย่างไร?', options: ['Americano ผสมนมเยอะกว่า', 'Americano คือช็อตกาแฟผสมน้ำเปล่า ส่วน Latte คือช็อตกาแฟผสมนม', 'Americano ใช้เมล็ดคั่วอ่อนเท่านั้น', 'ไม่มีความแตกต่างในสูตรตั้งต้น'], correctAnswer: 1 },
+    { questionText: 'ระยะเวลาสกัด(สับช็อต) เอสเพรสโซเพอร์เฟกต์ช็อต (Perfect Shot) ควรอยู่ประมาณกี่วินาที', options: ['10-15 วินาที', '20-30 วินาที', '45-60 วินาที', 'มากกว่า 1 นาที'], correctAnswer: 1 },
+    { questionText: 'ก่อนเสิร์ฟเครื่องดื่ม สิ่งสุดท้ายที่พนักงานต้อนรับควรทำคืออะไร?', options: ['ตรวจดูความสะอาดแก้วและตะโกนเรียกคิวลูกค้า', 'พูดขอบคุณลูกค้าด้วยรอยยิ้มหลังจากส่งมอบเครื่องดื่ม', 'เช็ดเคาน์เตอร์ด้วยกระดาษแห้ง', 'รีบกดช็อตใหม่เตรียมไว้'], correctAnswer: 1 },
   ]
 
   for (let i = 0; i < questions.length; i++) {
@@ -448,6 +543,67 @@ async function main() {
     })
     console.log('✅ 1 offline session created')
   }
+
+  // ─── 7. Sample Training Results for Onboarding Report ──
+  // Seed ข้อมูลผลอบรมตัวอย่าง เพื่อให้หน้ารายงาน KPI พนักงานใหม่มีข้อมูลแสดง
+  const allEmps = await prisma.employee.findMany({
+    select: { id: true, employeeCode: true, startDate: true, branchCode: true },
+    orderBy: { employeeCode: 'asc' },
+  })
+
+  let onboardingResultCount = 0
+  for (let i = 0; i < allEmps.length; i++) {
+    const emp = allEmps[i]
+    // สุ่มให้บางคนมีผล บางคนไม่มี
+    const rand = Math.random()
+    if (rand < 0.3) continue // 30% ยังไม่ได้อบรม
+
+    const startDate = new Date(emp.startDate)
+    let daysAfter: number
+    if (rand < 0.55) {
+      // 25% อบรมทัน (ภายใน 14 วัน)
+      daysAfter = Math.floor(Math.random() * 13) + 1 // 1-13 วัน
+    } else if (rand < 0.8) {
+      // 25% อบรมพอดี deadline
+      daysAfter = 14
+    } else {
+      // 20% อบรมเกินกำหนด
+      daysAfter = Math.floor(Math.random() * 20) + 15 // 15-34 วัน
+    }
+
+    const completedAt = new Date(startDate.getTime() + daysAfter * 24 * 60 * 60 * 1000)
+    const score = Math.floor(Math.random() * 21) + 80 // 80-100
+    const source = i % 5 === 0 ? 'IMPORT' : 'ONLINE' // บางคน Import จาก LMS
+
+    try {
+      await prisma.trainingResult.upsert({
+        where: {
+          employeeId_courseId_source: {
+            employeeId: emp.id,
+            courseId: onlineCourse.id,
+            source: source as any,
+          },
+        },
+        update: {
+          status: 'PASSED',
+          score,
+          completedAt,
+        },
+        create: {
+          employeeId: emp.id,
+          courseId: onlineCourse.id,
+          source: source as any,
+          status: 'PASSED',
+          score,
+          completedAt,
+        },
+      })
+      onboardingResultCount++
+    } catch {
+      // skip duplicates
+    }
+  }
+  console.log(`✅ ${onboardingResultCount} onboarding training results seeded`)
 
   // ─── Print Credentials ─────────────────────────────
   console.log('')

@@ -67,7 +67,9 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
               title: course.title,
               description: course.description,
               passScore: course.passScore,
+              creditHours: course.creditHours,
               isMandatory: course.isMandatory,
+              onboardingDeadlineDays: course.onboardingDeadlineDays,
               trainingType: course.trainingType,
               kpiIds: course.kpis.map(kc => kc.kpi.id),
             }} />

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Pencil } from 'lucide-react'
 import CourseEditModal from './CourseEditModal'
 
-export default function CourseEditButton({ course }: { course: { id: string; title: string; description: string; passScore: number; isMandatory: boolean; trainingType: string; kpiIds?: string[] } }) {
+export default function CourseEditButton({ course }: { course: { id: string; title: string; description: string; passScore: number; creditHours?: number; isMandatory: boolean; onboardingDeadlineDays?: number; trainingType: string; kpiIds?: string[] } }) {
   const [showModal, setShowModal] = useState(false)
 
   return (

@@ -25,7 +25,11 @@
    - `TrainingResult` และ `Certificate`: ระบบผลลัพธ์และใบรับรองเมื่อจบการศึกษาแล้ว (รับรองแหล่งที่มา ONLINE, OFFLINE, EXTERNAL, IMPORT)
 6. **KPI Management**:
    - `Kpi`: จัดเก็บตัวชี้วัดผูกกับปี `year`
-   - `CourseKpi`: ตารางเชื่อมแบบ Many-to-Many ระหว่าง Course และ Kpi
+   - `KpiCourse` (ชื่อตาราง): ตารางเชื่อมแบบ Many-to-Many ระหว่าง Course และ Kpi — **ใช้ชื่อ `kpiCourse` ใน Prisma Client**
+5. **Course Fields ที่ต้องรู้**:
+   - `onboardingDeadlineDays: Int @default(14)` — กำหนดวันที่พนักงานใหม่ต้องเรียนให้เสร็จ (นับจาก `startDate`)
+   - `isMandatory: Boolean` — หลักสูตรบังคับ, ถ้า `true` จะปรากฏในรายงาน Missing/Overdue
+   - `trainingType`: `ONLINE | OFFLINE | EXTERNAL`
 
 ## 3. Core Logic & Flows (ต้องทำตามเมื่อพัฒนาระบบเรียน)
 
@@ -55,7 +59,7 @@
 
 ### 3.4 KPI Mapping & Dashboard Reporting
 - **ปีของตัวชี้วัด (Yearly KPIs)**: ข้อมูล KPI จะถูกแยกตามปี (Year) 
-- **การนับข้อมูลรายปีบน Dashboard**: การดึงผลลัพธ์ Dashboard ข้ามปี (Annual Dashboard) จะใช้การ Filter ขอบเขตวันที่จากฟิลด์ `completedAt` เป็นหลัก เพื่อให้ครอบคลุม "หลักสูตรนอกเป้าหมาย (Extracurricular / นอก KPI)" ด้วยเสมอ ไม่ควร Join แค่ตาราง CourseKpi อย่างเดียว
+- **การนับข้อมูลรายปีบน Dashboard**: การดึงผลลัพธ์ Dashboard ข้ามปี (Annual Dashboard) จะใช้การ Filter ขอบเขตวันที่จากฟิลด์ `completedAt` เป็นหลัก เพื่อให้ครอบคลุม "หลักสูตรนอกเป้าหมาย (Extracurricular / นอก KPI)" ด้วยเสมอ ไม่ควร Join แค่ตาราง KpiCourse อย่างเดียว
 
 ### 3.5 Bulk Excel System (ระบบนำเข้าและส่งออกผลอบรม)
 - ระบบรองรับการ Export และ Import ข้อมูล `TrainingResult` สำหรับแอดมิน 
@@ -65,6 +69,20 @@
 ระบบผสานคุณสมบัติจาก **Gemini API** โดยตรง (รหัส `gemini-3-flash-preview` ณ ปี 2026) เพื่อเป็นผู้ช่วยให้กับฝ่าย HR ในการประเมินว่าหลักสูตรใด ควรตั้งค่าผู้เรียนไปที่ตำแหน่งหรือแผนกใด:
 - วงจรการทำงาน: **(ส่งพารามิเตอร์ Course) -> (API ถาม Gemini) -> (ได้รับคำแนะนำ JSON โค้ดฝ่าย) -> (ดึงข้อมูลพนักงานขึ้นมาทำ Auto-Select ติ๊กถูกอัตโนมัติ)**
 
+### 3.7 Course Analytics — Pass Rate คำนวณอย่างไร
+- **สถิติหลัก** คำนวณจาก `TrainingResult` ของหลักสูตรนั้น (Backend: `api/admin/reports/courses/route.ts`)
+- **Pass Rate Formula**: `passRate = Math.round((passedCount / totalTrained) * 100)`
+  - `totalTrained` = จำนวนพนักงานที่มี TrainingResult ทั้งหมด (รวม `PASSED`, `FAILED`, `IN_PROGRESS`)
+  - `passedCount` = นับเฉพาะ `status === 'PASSED'`
+  - ⚠️ คนที่ "เพิ่งเปิดคอร์ส" แต่ยังสอบไม่เสร็จ (IN_PROGRESS) นับเป็นตัวหารด้วย — ทำให้ Pass Rate ต่ำลงตามธรรมชาติ
+- **สถิติอื่น**: `avgScore` (ค่าเฉลี่ยจาก `score`), `avgPretest / avgPosttest` (Pre/Post test trend)
+- **Missing/Overdue List**: สร้างเฉพาะ `isMandatory = true` เท่านั้น โดยนับคนที่ไม่มี `TrainingResult` ในหลักสูตรนั้น
+
+### 3.8 onboardingDeadlineDays — ข้อควรระวัง
+`onboardingDeadlineDays` มี `@default(14)` ใน Schema และค่า `0` ถือว่า "ไม่มีกำหนด" ในบริบทของระบบ
+- **ปัญหาที่เคยเจอ**: ค่า `0` ถือเป็น Falsy ใน JS ทำให้ `|| 14` จะทับค่ากลับเป็น 14 อยู่เสมอ
+- **วิธีแก้ที่ถูกต้อง**: ใช้ Nullish Coalescing `?? 14` แทน `|| 14` เสมอในทุก Component ที่แสดงค่านี้ และใน API ให้ `Number(val) || convert via explicit check: val === '' ? 0 : Number(val)` ไม่ใช้ `Number(val) || default`
+
 ## 4. Design System & UX Standards
 - **Framework**: `Next.js 15 (App Router)` + `React 19` + `Tailwind CSS v4`
 - **Theme**: เราใช้สีธีมหลัก เป็น โทน ขาว/แดง/เหลือง/ดำ (อิงตาม Corporate Identity ของบริษัท)
@@ -73,7 +91,10 @@
   - **ห้ามเรียกใช้งาน `window.alert()`, `confirm()` หรือ แจ้งเตือนของเบราว์เซอร์เด็ดขาด!** 
   - ให้เรียกใช้งานอินเทอร์เฟซ `useModal()` จาก `@/components/ModalProvider` แทนเสมอ (เช่น `showAlert({ type: 'success', message: '...' })` เพื่อความคล่องตัวและสวยงาม
   - ข้อผิดพลาดในการบันทึกให้ใช้ Error Label สีแดง (`setError('...')`) แทรกลงใน UI ตรงๆ 
-- **UX ข้อควรระวัง (Number Inputs)**: ช่องกรอกตัวเลขทั้งหมดในระบบ **ห้ามใช้ค่า default พังๆ ที่ลบให้ว่างไม่ได้** แนะนำให้ผูก Type เป็น `value={value || ''}` แบบ String ชั่วคราว และ **บังคับใส่** `onFocus={(e) => e.target.select()}` เสมอ 
+- **UX ข้อควรระวัง (Number Inputs)**: ช่องกรอกตัวเลขทั้งหมดในระบบ **ห้ามใช้ค่า default พังๆ ที่ลบให้ว่างไม่ได้**
+  - ใช้ `useState<number | string>(value ?? defaultVal)` — **ต้องใช้ `??` ไม่ใช่ `||`** เสมอสำหรับค่าที่อาจเป็น 0
+  - ใช้ `onChange={(e) => setVal(e.target.value === '' ? '' : Number(e.target.value))}`
+  - **บังคับใส่** `onFocus={(e) => e.target.select()}` เสมอ 
 - **Class Components สำเร็จรูป**: 
   - `btn-primary`, `btn-secondary`: สำหรับระบบปุ่ม
   - `stat-card`, `glass-card`: สำหรับ Card กล่องเนื้อหาและกราฟ
@@ -83,9 +104,31 @@
 ไฟล์วิดีโอรูปภาพที่เกี่ยวข้องกับคอร์ส จะไม่ได้ถูกอัพขึ้นระบบไฟล์ตรงๆ แต่จะอัปขึ้น **Cloudflare R2** ผ่านไลบรารี `@aws-sdk/client-s3` โดยมี `lib/r2.ts` เป็นตัวจัดการ และจะใช้งานลิ้งค์สาธารณะ (R2_PUBLIC_URL) ตลอดการเปิดหน้าเว็บ
 
 ---
-## 6. Developer Protocol & Deployment (ข้อบังคับสำหรับ AI)
+
+## 6. Data Seed (prisma/seed.ts)
+**คำสั่งรัน**: `bash -lc "npx tsx prisma/seed.ts"` (ต้องรันด้วย `bash -lc` เสมอ เพราะ PATH)
+
+**Seed จะทำสิ่งเหล่านี้ตามลำดับ:**
+1. ลบ Transaction ทั้งหมดก่อน (TrainingResult, QuizAttempt, CourseAssignment, Certificate ฯลฯ)
+2. ลบ Question, CourseStep, Course (clean หลักสูตรเดิมออก)
+3. ลบ Employee, Branch แล้วสร้างใหม่
+4. สร้าง Admin (`admin / admin123`)
+5. สร้าง Branch (สาขา 20 แห่ง — dev mode ใช้ `devBranchesData`, production ใช้ `productionBranchesData`)
+6. สร้าง Employee 50 คน พร้อม Logic แยกตำแหน่งตามประเภทสาขา:
+   - **สาขา (Branch)**: Barista, Cashier, Service Crew, Shift Supervisor, Store Manager, แม่บ้าน
+   - **HQ (isHeadOffice=true)**: IT Support, HR Executive, Marketing Officer, Manager, Director
+7. สร้าง Course 3 หลักสูตร (Cafe Theme): CRS-001 (Online/บังคับ), CRS-002 (Online), CRS-003 (Offline/บังคับ)
+8. สร้าง Steps + Questions เนื้อหาธีมร้านกาแฟ
+9. สุ่มผลการอบรม (TrainingResult) บางส่วน
+
+**สลับ Mode สาขา**: แก้ `const activeBranches = devBranchesData` → `productionBranchesData`
+
+---
+
+## 7. Developer Protocol & Deployment (ข้อบังคับสำหรับ AI)
 - **Pushing Code & Deployment**: ห้าม AI ทำการ `git add`, `git commit`, `git push` หรือรันสคริปต์ `deploy.sh` โดยพลการ **เด็ดขาด**
 - ให้กระทำการ Deploy และอัปโหลดโค้ดขึ้น Server **เมื่อได้รับคำสั่งจาก USER โดยตรงเท่านั้น** (เช่น "push code ลงเซิร์ฟให้หน่อย")
+- **pushcode = `git add . && git commit -m "..." && git push`** เท่านั้น ไม่ต้อง `npm run build` หรือรัน deploy script เพิ่มเติม เว้นแต่ USER จะสั่ง
 
 ---
 *Created per USER request. Please do not apply concepts, schema logic, or styling techniques from other projects (`muniflow` or elsewhere) when editing `mckpi`.*

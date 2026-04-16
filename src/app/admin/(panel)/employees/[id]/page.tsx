@@ -12,6 +12,11 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
   const employee = await prisma.employee.findUnique({ where: { id } })
   if (!employee) return notFound()
 
+  const branches = await prisma.branch.findMany({
+    orderBy: { name: 'asc' },
+    select: { code: true, name: true }
+  })
+
   return (
     <div className="space-y-6 animate-fade-in max-w-2xl">
       <div className="flex items-center gap-4">
@@ -24,17 +29,21 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
         </div>
       </div>
 
-      <EmployeeEditForm employee={{
-        id: employee.id,
-        employeeCode: employee.employeeCode,
-        fullName: employee.fullName,
-        positionCode: employee.positionCode || '',
-        departmentCode: employee.departmentCode || '',
-        branchCode: employee.branchCode,
-        dateOfBirth: employee.dateOfBirth.toISOString().split('T')[0],
-        startDate: employee.startDate.toISOString().split('T')[0],
-        status: employee.status,
-      }} />
+      <EmployeeEditForm 
+        key={employee.id}
+        employee={{
+          id: employee.id,
+          employeeCode: employee.employeeCode,
+          fullName: employee.fullName,
+          positionCode: employee.positionCode || '',
+          departmentCode: employee.departmentCode || '',
+          branchCode: employee.branchCode,
+          dateOfBirth: employee.dateOfBirth.toISOString().split('T')[0],
+          startDate: employee.startDate.toISOString().split('T')[0],
+          status: employee.status,
+        }} 
+        branches={branches} 
+      />
     </div>
   )
 }

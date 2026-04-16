@@ -18,21 +18,14 @@ interface EmployeeData {
   status: string
 }
 
-export default function EmployeeEditForm({ employee }: { employee: EmployeeData }) {
+export default function EmployeeEditForm({ employee, branches = [] }: { employee: EmployeeData, branches?: { code: string; name: string }[] }) {
   const router = useRouter()
   const { showConfirm } = useModal()
   const [loading, setLoading] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
+  const [branchValue, setBranchValue] = useState(employee.branchCode || '')
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
-  const [branches, setBranches] = useState<{ code: string; name: string }[]>([])
-
-  useState(() => {
-    fetch('/api/admin/branches')
-      .then(res => res.json())
-      .then(data => Array.isArray(data) && setBranches(data))
-      .catch(err => console.error(err))
-  })
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -116,7 +109,12 @@ export default function EmployeeEditForm({ employee }: { employee: EmployeeData 
         </div>
         <div>
           <label className="block text-sm font-medium text-[var(--color-text)] mb-1">สาขา</label>
-          <select name="branchCode" className="input-field" defaultValue={employee.branchCode || ''}>
+          <select 
+            name="branchCode" 
+            className="input-field" 
+            value={branchValue}
+            onChange={(e) => setBranchValue(e.target.value)}
+          >
             <option value="">- ระบุสาขา -</option>
             {branches.map(b => (
               <option key={b.code} value={b.code}>{b.name} ({b.code})</option>

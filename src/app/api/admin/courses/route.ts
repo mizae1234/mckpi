@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { code, title, description, trainingType, passScore, creditHours, isMandatory, status, kpiIds } = body
+    const { code, title, description, trainingType, passScore, creditHours, isMandatory, status, kpiIds, onboardingDeadlineDays } = body
 
     if (!code || !title || !trainingType) {
       return NextResponse.json({ error: 'กรุณากรอกข้อมูลที่จำเป็น' }, { status: 400 })
@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
         passScore: passScore || 80,
         creditHours: creditHours || 0,
         isMandatory: isMandatory || false,
+        onboardingDeadlineDays: onboardingDeadlineDays !== undefined ? (onboardingDeadlineDays === '' ? 0 : Number(onboardingDeadlineDays)) : (isMandatory ? 14 : 0),
         status: status || 'DRAFT',
       },
     })

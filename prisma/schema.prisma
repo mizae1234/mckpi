@@ -91,6 +91,7 @@ model Employee {
   passwordHash   String
   fullName       String
   positionCode   String?
+  positionLevel  Int?
   departmentCode String?
   branchCode     String?
   dateOfBirth    DateTime
@@ -109,11 +110,12 @@ model Employee {
 }
 
 model Branch {
-  id         String   @id @default(cuid())
-  code       String   @unique
-  name       String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  isHeadOffice Boolean  @default(false) // true = สำนักงานใหญ่ (อบรมผ่าน LMS ภายนอก)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   employees Employee[]
 }
@@ -126,6 +128,7 @@ model Course {
   trainingType TrainingType
   passScore    Int          @default(80)
   isMandatory  Boolean      @default(false)
+  onboardingDeadlineDays Int @default(14) // กำหนดวันอบรมหลังเริ่มงาน (สำหรับหลักสูตรบังคับ)
   creditHours  Float        @default(0) // ชั่วโมงอบรม/เครดิต
   thumbnailUrl String?
   status        CourseStatus @default(DRAFT)

@@ -88,18 +88,46 @@ export async function POST(request: NextRequest) {
        const pretestScore = parseScore(row['คะแนน Pretest'])
        const posttestScore = parseScore(row['คะแนน Posttest'])
 
-       // Parse CompeltedAt Date
+       // Parse CompletedAt Date — รองรับทั้ง ค.ศ. และ พ.ศ.
        let completedAt: Date | null = null
        const rawDate = row['วันที่สำเร็จ']
        if (rawDate && rawDate !== '-') {
-          // It could be an Excel serial date or a parsed string "3/4/2026"
           if (typeof rawDate === 'number') {
-            // Excel serial date to JS Date
+            // Excel serial date → JS Date (ค.ศ.)
             completedAt = new Date((rawDate - 25569) * 86400 * 1000)
           } else {
-            // Try standard parse
-            const d = new Date(rawDate)
-            if (!isNaN(d.getTime())) completedAt = d
+            const dateStr = rawDate.toString().trim()
+            let parsed: Date | null = null
+
+            // รูปแบบ D/M/YYYY หรือ DD/MM/YYYY (รองรับ พ.ศ. และ ค.ศ.)
+            const slashMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+            if (slashMatch) {
+              let year = parseInt(slashMatch[3])
+              const month = parseInt(slashMatch[2])
+              const day = parseInt(slashMatch[1])
+              if (year >= 2400) year -= 543 // แปลง พ.ศ. → ค.ศ.
+              parsed = new Date(Date.UTC(year, month - 1, day))
+            }
+
+            // รูปแบบ YYYY-MM-DD (รองรับ พ.ศ. และ ค.ศ.)
+            if (!parsed) {
+              const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+              if (isoMatch) {
+                let year = parseInt(isoMatch[1])
+                const month = parseInt(isoMatch[2])
+                const day = parseInt(isoMatch[3])
+                if (year >= 2400) year -= 543 // แปลง พ.ศ. → ค.ศ.
+                parsed = new Date(Date.UTC(year, month - 1, day))
+              }
+            }
+
+            // fallback: try standard parse
+            if (!parsed) {
+              const d = new Date(dateStr)
+              if (!isNaN(d.getTime())) parsed = d
+            }
+
+            if (parsed && !isNaN(parsed.getTime())) completedAt = parsed
           }
        }
 

@@ -20,6 +20,10 @@ import {
   Building2,
   Library,
   Target,
+  FileBarChart2,
+  LineChart,
+  UserCircle,
+  TrendingUp,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -47,6 +51,15 @@ const menuGroups = [
       { href: '/admin/sessions', icon: CalendarCheck, label: 'รอบอบรม Offline' },
       { href: '/admin/results', icon: BarChart3, label: 'ผลลัพธ์ & Import' },
       { href: '/admin/certificates', icon: Award, label: 'ใบรับรอง' },
+    ],
+  },
+  {
+    title: 'REPORTS',
+    items: [
+      { href: '/admin/reports/annual-kpi', icon: LineChart, label: 'KPI ประจำปี' },
+      { href: '/admin/reports/onboarding', icon: FileBarChart2, label: 'KPI พนักงานใหม่' },
+      { href: '/admin/reports/transcript', icon: UserCircle, label: 'ประวัติรายบุคคล' },
+      { href: '/admin/reports/courses', icon: TrendingUp, label: 'สถิติหลักสูตร' },
     ],
   },
 ]
