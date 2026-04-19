@@ -8,6 +8,15 @@ node_modules
 README.md
 CLAUDE.md
 AGENTS.md
+MCKPI_SKILLS.md
+MCKPI_FLOW.md
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
+deploy.sh
+clean_branches.py
+check-kpis.ts
+test-gemini.js
+test-script.ts
+list-models.js
+.vscode

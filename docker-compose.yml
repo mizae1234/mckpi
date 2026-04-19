@@ -5,50 +5,17 @@ services:
       dockerfile: Dockerfile
     container_name: mkpi-app
     restart: unless-stopped
-    ports:
-      - "3020:3000"
+    network_mode: host
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/mkpi?schema=public
-      - AUTH_SECRET=${AUTH_SECRET}
-      - AUTH_TRUST_HOST=true
-      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
-      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
-      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
-      - R2_BUCKET_NAME=${R2_BUCKET_NAME}
-      - R2_PUBLIC_URL=${R2_PUBLIC_URL}
+      - PORT=3020
+      - HOSTNAME=0.0.0.0
+      - NODE_ENV=production
+      - TZ=Asia/Bangkok
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3020/api/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - mkpi-network
-
-  db:
-    image: postgres:16-alpine
-    container_name: mkpi-db
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=mkpi
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    volumes:
-      - mkpi-pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d mkpi"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - mkpi-network
-
-volumes:
-  mkpi-pgdata:
-
-networks:
-  mkpi-network:
-    driver: bridge
