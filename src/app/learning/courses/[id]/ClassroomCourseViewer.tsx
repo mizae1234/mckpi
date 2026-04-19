@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, MapPin, Users, Video, UserCheck, XCircle, Clock } from 'lucide-react'
+import { Calendar, MapPin, Users, Video, UserCheck, XCircle, Clock, X } from 'lucide-react'
 
 export default function ClassroomCourseViewer({ 
   course, 
