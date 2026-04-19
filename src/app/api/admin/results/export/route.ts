@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
           { fullName: { contains: q, mode: 'insensitive' } },
           { branchCode: { contains: q, mode: 'insensitive' } },
           { departmentCode: { contains: q, mode: 'insensitive' } },
-          { position: { contains: q, mode: 'insensitive' } },
+          { positionCode: { contains: q, mode: 'insensitive' } },
         ],
       }
     }
