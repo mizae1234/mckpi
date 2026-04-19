@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================
 # MKPI Deploy Script
-# Domain: http://mkpi.popcorn-creator.com
+# Domain: mkpi.popcorn-creator.com
 # Port:   3020
 # Path:   /home/web/mckpi
 # =============================================
@@ -13,6 +13,7 @@ REPO="https://github.com/mizae1234/mckpi.git"
 APP_DIR="/home/web/mckpi"
 CONTAINER="mkpi-app"
 BRANCH="main"
+DOMAIN="mkpi.popcorn-creator.com"
 
 echo "🚀 Deploying MKPI to $SERVER ..."
 
@@ -23,6 +24,7 @@ APP_DIR="/home/web/mckpi"
 REPO="https://github.com/mizae1234/mckpi.git"
 BRANCH="main"
 CONTAINER="mkpi-app"
+DOMAIN="mkpi.popcorn-creator.com"
 
 # Ensure directory exists
 mkdir -p /home/web
@@ -68,6 +70,45 @@ docker compose up -d
 echo "⏳ Waiting for containers to start..."
 sleep 10
 
+# ── Nginx reverse proxy setup ──────────────────────────────
+NGINX_CONF="/etc/nginx/sites-available/$DOMAIN"
+if [ ! -f "$NGINX_CONF" ]; then
+    echo "🌐 Setting up Nginx reverse proxy for $DOMAIN ..."
+
+    cat > "$NGINX_CONF" << 'NGINXEOF'
+server {
+    listen 80;
+    server_name mkpi.popcorn-creator.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:3020;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 86400;
+        client_max_body_size 500M;
+    }
+}
+NGINXEOF
+
+    # Enable site
+    ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/
+    nginx -t && systemctl reload nginx
+    echo "✅ Nginx configured"
+
+    # SSL with Certbot
+    echo "🔒 Setting up SSL with Certbot..."
+    certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email admin@popcorn-creator.com --redirect || echo "⚠️  Certbot failed — SSL not configured. You can run manually: certbot --nginx -d $DOMAIN"
+else
+    echo "✅ Nginx config already exists for $DOMAIN"
+    nginx -t && systemctl reload nginx
+fi
+
 # Check container status
 echo ""
 echo "📋 Container status:"
@@ -79,5 +120,5 @@ echo "📄 App logs (last 20 lines):"
 docker logs --tail 20 "$CONTAINER" 2>&1 || true
 
 echo ""
-echo "✅ Deploy complete! → http://mkpi.popcorn-creator.com"
+echo "✅ Deploy complete! → https://$DOMAIN"
 ENDSSH
