@@ -56,6 +56,8 @@ R2_BUCKET_NAME=mckpi
 R2_PUBLIC_URL=https://pub-f0b1b293775a40b4a00275996c3ebf10.r2.dev
 PASS_FOR_ALL="admin../"
 GEMINI_API_KEY=AIzaSyAnv3kW1o7ae_4nEiXkHOfZ-mmtNq-dYuA
+AUTH_URL="https://mkpi.popcorn-creator.com"
+NEXTAUTH_URL="https://mkpi.popcorn-creator.com"
 ENVEOF
     echo "✅ .env created"
 fi
