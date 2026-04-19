@@ -122,7 +122,7 @@ export async function GET() {
         courseId: reg.session.courseId,
         assignedBy: 'SELF',
         assignedAt: reg.registeredAt.toISOString(),
-        dueDate: reg.session.startDate.toISOString(), // Use session start date as due date cue
+        dueDate: reg.session.sessionDate.toISOString(), // Use session start date as due date cue
         status: reg.status === 'CANCELLED' ? 'CANCELLED' : 'NOT_STARTED', // Just a visual proxy
         course: reg.session.course
       }))
