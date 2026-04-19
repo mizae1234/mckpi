@@ -47,7 +47,7 @@ export async function POST(
             data: {
               stepId,
               questionText: mq.questionText,
-              options: mq.options,
+              options: mq.options as import('@prisma/client').Prisma.InputJsonValue,
               correctAnswer: mq.correctAnswer,
               orderNum: nextOrder++,
               masterQuestionId: mq.id,
