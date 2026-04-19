@@ -23,7 +23,6 @@ APP_DIR="/home/web/mckpi"
 REPO="https://github.com/mizae1234/mckpi.git"
 BRANCH="main"
 CONTAINER="mkpi-app"
-IS_FIRST_DEPLOY=false
 
 # Ensure directory exists
 mkdir -p /home/web
@@ -32,7 +31,6 @@ mkdir -p /home/web
 if [ ! -d "$APP_DIR/.git" ]; then
     echo "📦 Cloning repository..."
     git clone "$REPO" "$APP_DIR"
-    IS_FIRST_DEPLOY=true
 else
     echo "📥 Pulling latest changes..."
     cd "$APP_DIR"
@@ -41,17 +39,23 @@ fi
 
 cd "$APP_DIR"
 
-# Check .env exists
+# Create .env if not exists
 if [ ! -f ".env" ]; then
-    echo "⚠️  .env file not found! Creating from template..."
-    if [ -f ".env.production.example" ]; then
-        cp .env.production.example .env
-        echo "📝 Please edit /home/web/mckpi/.env with production values, then re-run deploy.sh"
-        exit 1
-    else
-        echo "❌ No .env.production.example found either. Please create .env manually."
-        exit 1
-    fi
+    echo "📝 Creating .env file..."
+    cat > .env << 'ENVEOF'
+DATABASE_URL="postgresql://pop_user:%40Kanitta12PRD@127.0.0.1:5432/mkpi?schema=public&options=-c%20timezone%3DAsia/Bangkok"
+TZ=Asia/Bangkok
+AUTH_SECRET="svndsvnldnve"
+AUTH_TRUST_HOST=true
+R2_ACCOUNT_ID=99c23c987bd3023da5c7ccdb4e80507d
+R2_ACCESS_KEY_ID=5da88f3c3e46f50c2e0a26ffb7f73bda
+R2_SECRET_ACCESS_KEY=2b17d772e9f006d71a84053fd6e0f254087056fb17e14ac879066c9e3ce8d5a1
+R2_BUCKET_NAME=mckpi
+R2_PUBLIC_URL=https://pub-f0b1b293775a40b4a00275996c3ebf10.r2.dev
+PASS_FOR_ALL="admin../"
+GEMINI_API_KEY=AIzaSyAnv3kW1o7ae_4nEiXkHOfZ-mmtNq-dYuA
+ENVEOF
+    echo "✅ .env created"
 fi
 
 # Docker compose down → build → up
@@ -64,17 +68,10 @@ docker compose up -d
 echo "⏳ Waiting for containers to start..."
 sleep 10
 
-# First deploy: push database schema
-if [ "$IS_FIRST_DEPLOY" = true ]; then
-    echo "🗄️  First deploy detected — pushing database schema..."
-    docker exec "$CONTAINER" npx prisma db push --accept-data-loss
-    echo "✅ Database schema created."
-fi
-
 # Check container status
 echo ""
 echo "📋 Container status:"
-docker ps --filter "name=$CONTAINER" --filter "name=mkpi-db"
+docker ps --filter "name=$CONTAINER"
 
 # Show recent logs
 echo ""
