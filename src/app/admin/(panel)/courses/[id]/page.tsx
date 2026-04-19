@@ -147,6 +147,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
           capacity: s.capacity,
           waitlistCapacity: s.waitlistCapacity,
           trainerName: s.trainerName,
+          meetingUrl: s.meetingUrl || null,
           registrationCount: s._count.registrations,
         }))} />
       </div>
