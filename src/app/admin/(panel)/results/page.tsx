@@ -65,9 +65,13 @@ export default async function ResultsPage({
   if (year) {
     // Only apply year boundaries if specific startDate/endDate aren't overriding it
     if (!startDate && !endDate) {
-      if (!where.completedAt) where.completedAt = {}
-      where.completedAt.gte = new Date(`${year}-01-01T00:00:00.000Z`)
-      where.completedAt.lte = new Date(`${year}-12-31T23:59:59.999Z`)
+      const gte = new Date(`${year}-01-01T00:00:00.000Z`)
+      const lte = new Date(`${year}-12-31T23:59:59.999Z`)
+      where.completedAt = {
+        ...((where.completedAt as Prisma.DateTimeNullableFilter) || {}),
+        gte,
+        lte,
+      } as Prisma.DateTimeNullableFilter
     }
   }
 
@@ -79,13 +83,17 @@ export default async function ResultsPage({
   }
 
   if (startDate || endDate) {
-    where.completedAt = {}
+    const filter: Prisma.DateTimeNullableFilter = {}
     if (startDate) {
-      where.completedAt.gte = new Date(`${startDate}T00:00:00.000Z`)
+      filter.gte = new Date(`${startDate}T00:00:00.000Z`)
     }
     if (endDate) {
-      where.completedAt.lte = new Date(`${endDate}T23:59:59.999Z`)
+      filter.lte = new Date(`${endDate}T23:59:59.999Z`)
     }
+    where.completedAt = {
+      ...((where.completedAt as Prisma.DateTimeNullableFilter) || {}),
+      ...filter
+    } as Prisma.DateTimeNullableFilter
   }
 
   const kpis = await prisma.kpi.findMany({
