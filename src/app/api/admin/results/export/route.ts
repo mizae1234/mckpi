@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     if (type) {
       where.course = {
         ...where.course as object,
-        trainingType: type,
+        trainingType: type as any,
       }
     }
 
